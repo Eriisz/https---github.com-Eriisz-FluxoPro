@@ -20,6 +20,7 @@ import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { FirebaseError } from 'firebase/app';
 
 export default function SignupPage() {
   const [phone, setPhone] = useState('');
@@ -64,10 +65,17 @@ export default function SignupPage() {
         });
         router.push('/login');
     } catch (error: any) {
+        let description = 'Ocorreu um erro desconhecido. Tente novamente.';
+        if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
+            description = 'Este número de celular já está em uso. Tente fazer login.';
+        } else if (error.message) {
+            description = error.message;
+        }
+        
         toast({
             variant: 'destructive',
             title: 'Erro de Cadastro',
-            description: error.message,
+            description: description,
         });
     }
   };
