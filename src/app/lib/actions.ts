@@ -6,6 +6,7 @@ import { addMonths, format } from "date-fns";
 import { checkBudgetAndAlert } from "@/ai/flows/budgeting-alerts";
 import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { getserverFirestore } from "@/lib/server/firebase";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 
 async function getBudgetForCategory(userId: string, categoryId: string, month: string): Promise<number> {
@@ -25,7 +26,7 @@ const transactionSchema = z.object({
   value: z.number().min(0.01, "Valor deve ser maior que zero."),
   date: z.date(),
   account: z.string().min(1, "Conta é obrigatória."),
-  category: z.string().min(1, "Categoria é obrigatória."),
+  category: z.string().optional(),
   type: z.enum(["income", "expense"]),
   installments: z.number().min(1).max(120).default(1),
 });
@@ -54,7 +55,7 @@ export async function addTransaction(
     value: Number(String(formData.get("value")).replace(",", ".")),
     date: new Date(formData.get("date") as string),
     account: formData.get("account"),
-    category: formData.get("category"),
+    category: formData.get("type") === 'income' ? 'Receita' : formData.get("category"),
     type: formData.get("type"),
     installments: Number(formData.get("installments") || 1),
   };
@@ -101,7 +102,14 @@ export async function addTransaction(
     try {
         await addDoc(transactionsCol, newTransaction);
     } catch(e: any) {
-        return { message: `Erro ao adicionar transação: ${e.message}`, errors: { db: [e.message] } };
+        // This is a server action, which doesn't have direct access to the client-side error emitter.
+        // For debugging purposes in this context, we will throw the specific error.
+        // The Next.js dev overlay will catch and display it.
+        throw new FirestorePermissionError({
+            path: transactionsCol.path,
+            operation: 'create',
+            requestResourceData: newTransaction,
+        });
     }
   }
   
@@ -113,7 +121,7 @@ export async function addTransaction(
           const result = await checkBudgetAndAlert({
               userId,
               transactionValue: data.value,
-              transactionCategory: data.category,
+              transactionCategory: data.category!,
               budgetValue,
           });
 
