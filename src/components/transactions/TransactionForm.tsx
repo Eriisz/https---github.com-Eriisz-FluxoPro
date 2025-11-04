@@ -1,8 +1,8 @@
+
 "use client";
 
-import React, { useEffect, useTransition, useState } from 'react';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import React, { useEffect, useState, useTransition } from 'react';
+import { useFormState } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,7 +10,7 @@ import { CalendarIcon, Calculator as CalculatorIcon, PlusCircle } from 'lucide-r
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-import { useUser } from '@/firebase';
+import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { addTransaction, type TransactionFormState } from '@/app/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Account, Category } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
+import { collection } from 'firebase/firestore';
 
 interface TransactionFormProps {
     accounts: Account[];
@@ -50,22 +51,33 @@ const formSchema = z.object({
     value: z.string().refine(val => !isNaN(parseFloat(val.replace(',', '.'))), { message: "Valor inválido." }),
     date: z.date(),
     account: z.string().min(1, { message: "Selecione uma conta." }),
-    category: z.string().min(1, { message: "Selecione uma categoria." }),
+    category: z.string().optional(),
     type: z.enum(['income', 'expense'], { required_error: "Selecione o tipo." }),
     isRecurring: z.boolean().default(false),
     installments: z.string().optional(),
+  }).refine(data => data.type === 'income' || (data.type === 'expense' && data.category), {
+    message: "Selecione uma categoria para despesas.",
+    path: ["category"],
   });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function TransactionForm({ accounts, categories, onFormSubmit }: TransactionFormProps) {
+export function TransactionForm({ accounts, categories: initialCategories, onFormSubmit }: TransactionFormProps) {
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   
   const initialState: TransactionFormState = { message: "", errors: {} };
-  const [state, dispatch] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
+  const [state, dispatch] = useFormState(addTransaction.bind(null, user?.uid || ''), initialState);
   const [isPending, startTransition] = useTransition();
+
+  const categoriesQuery = useMemoFirebase(
+    () => (user ? collection(firestore, `users/${user.uid}/categories`) : null),
+    [firestore, user]
+  );
+  const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -109,7 +121,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
     formData.append('value', data.value);
     formData.append('date', data.date.toISOString());
     formData.append('account', data.account);
-    formData.append('category', data.category);
+    if(data.category) formData.append('category', data.category);
     formData.append('type', data.type);
     formData.append('installments', data.isRecurring ? data.installments || '1' : '1');
     startTransition(() => {
@@ -118,11 +130,11 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
   }
 
   const filteredCategories = React.useMemo(() => {
-    return categories.filter(c => c.type === transactionType);
-  }, [categories, transactionType]);
+    return (categories || initialCategories).filter(c => c.type === transactionType);
+  }, [categories, initialCategories, transactionType]);
 
 
-  if (isUserLoading) return <div>Carregando...</div>;
+  if (isUserLoading || loadingCategories) return <div>Carregando...</div>;
 
   return (
     <>
@@ -137,7 +149,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
                 <RadioGroup
                   onValueChange={(value) => {
                     field.onChange(value);
-                    form.setValue('category', '');
+                    form.setValue('category', ''); // Reset category on type change
                   }}
                   defaultValue={field.value}
                   className="flex justify-center space-x-4"

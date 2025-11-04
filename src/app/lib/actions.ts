@@ -1,3 +1,4 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -6,8 +7,6 @@ import { addMonths, format } from "date-fns";
 import { checkBudgetAndAlert } from "@/ai/flows/budgeting-alerts";
 import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { getserverFirestore } from "@/lib/server/firebase";
-import { FirestorePermissionError } from "@/firebase/errors";
-
 
 async function getBudgetForCategory(userId: string, categoryId: string, month: string): Promise<number> {
     const db = getserverFirestore();
@@ -15,7 +14,6 @@ async function getBudgetForCategory(userId: string, categoryId: string, month: s
     const q = query(budgetsCol, where("categoryId", "==", categoryId), where("month", "==", month));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-        // Assuming one budget per category for simplicity
         return querySnapshot.docs[0].data().limit;
     }
     return 0;
@@ -76,10 +74,20 @@ export async function addTransaction(
   const transactionsCol = collection(db, `users/${userId}/transactions`);
 
   // Find category ID from name
-  const categoriesCol = collection(db, `users/${userId}/categories`);
-  const catQuery = query(categoriesCol, where("name", "==", data.category));
-  const catSnapshot = await getDocs(catQuery);
-  const categoryId = catSnapshot.empty ? null : catSnapshot.docs[0].id;
+  let categoryId: string | null = null;
+  if (data.category) {
+    const categoriesCol = collection(db, `users/${userId}/categories`);
+    const catQuery = query(categoriesCol, where("name", "==", data.category));
+    const catSnapshot = await getDocs(catQuery);
+    categoryId = catSnapshot.empty ? null : catSnapshot.docs[0].id;
+  }
+  
+  if (!categoryId && data.type === 'expense') {
+     return {
+         message: "Erro de validação. Categoria é obrigatória para despesas.",
+         errors: { category: ["Categoria é obrigatória para despesas."] },
+     };
+  }
 
 
   for (let i = 0; i < data.installments; i++) {
@@ -93,7 +101,7 @@ export async function addTransaction(
       value: transactionValue,
       date: transactionDate.toISOString(),
       account: data.account,
-      category: data.category, // Storing name for display
+      category: data.category || 'Receita', // Storing name for display
       categoryId: categoryId, // Storing ID for reference
       type: data.type,
       groupId,
@@ -102,14 +110,10 @@ export async function addTransaction(
     try {
         await addDoc(transactionsCol, newTransaction);
     } catch(e: any) {
-        // This is a server action, which doesn't have direct access to the client-side error emitter.
-        // For debugging purposes in this context, we will throw the specific error.
-        // The Next.js dev overlay will catch and display it.
-        throw new FirestorePermissionError({
-            path: transactionsCol.path,
-            operation: 'create',
-            requestResourceData: newTransaction,
-        });
+        return {
+            message: e.message,
+            errors: { firestore: [e.message] }
+        }
     }
   }
   
