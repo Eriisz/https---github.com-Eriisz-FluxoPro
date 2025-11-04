@@ -37,7 +37,9 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Account, Category } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
-import { collection } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { addMonths } from 'date-fns';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface TransactionFormProps {
     accounts: Account[];
@@ -66,11 +68,8 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
   const firestore = useFirestore();
   const { toast } = useToast();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const initialState: TransactionFormState = { message: "", errors: {} };
-  const [state, dispatch] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
-  const [isPending, startTransition] = useTransition();
-
 
   const categoriesQuery = useMemoFirebase(
     () => (user ? collection(firestore, `users/${user.uid}/categories`) : null),
@@ -96,37 +95,70 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
   const isRecurring = form.watch('isRecurring');
   const transactionType = form.watch('type');
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.errors) {
+  async function onSubmit(data: FormValues) {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+        const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
+        const categoriesCol = collection(firestore, `users/${user.uid}/categories`);
+        
+        const catQuery = query(categoriesCol, where("name", "==", data.category));
+        const catSnapshot = await getDocs(catQuery);
+        const categoryId = catSnapshot.empty ? null : catSnapshot.docs[0].id;
+
+        if (!categoryId && data.type === 'expense') {
+            form.setError('category', { message: 'Categoria é obrigatória para despesas.' });
+            setIsSubmitting(false);
+            return;
+        }
+        
+        const installments = data.isRecurring ? parseInt(data.installments || '1', 10) : 1;
+        const groupId = installments > 1 ? crypto.randomUUID() : undefined;
+        const value = parseFloat(data.value.replace(',', '.'));
+
+        for (let i = 0; i < installments; i++) {
+            const transactionDate = addMonths(data.date, i);
+            const transactionValue = data.type === 'expense' ? -value : value;
+            
+            const newTransaction = {
+                userId: user.uid,
+                description: data.description,
+                value: transactionValue,
+                date: transactionDate.toISOString(),
+                account: data.account,
+                category: data.category || '',
+                categoryId: categoryId,
+                type: data.type,
+                groupId,
+                installments: installments > 1 ? { current: i + 1, total: installments } : undefined,
+            };
+            
+            addDocumentNonBlocking(transactionsCol, newTransaction);
+        }
+
         toast({
-          title: "Erro ao adicionar transação",
-          description: state.message,
-          variant: 'destructive',
+            title: "Sucesso!",
+            description: `Transação ${installments > 1 ? 'parcelada ' : ''}adicionada com sucesso!`,
         });
-      } else {
-        toast({
-          title: "Sucesso!",
-          description: state.message,
-        });
+
         form.reset();
         onFormSubmit();
-      }
-    }
-  }, [state, toast, form, onFormSubmit]);
 
-  function onSubmit(data: FormValues) {
-    const formData = new FormData();
-    formData.append('description', data.description);
-    formData.append('value', data.value);
-    formData.append('date', data.date.toISOString());
-    formData.append('account', data.account);
-    if(data.category) formData.append('category', data.category);
-    formData.append('type', data.type);
-    formData.append('installments', data.isRecurring ? data.installments || '1' : '1');
-    startTransition(() => {
-      dispatch(formData);
-    });
+    } catch (error) {
+        console.error("Failed to add transaction:", error);
+        toast({
+            variant: 'destructive',
+            title: "Erro ao adicionar transação",
+            description: "Ocorreu um erro inesperado. Tente novamente.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   const filteredCategories = React.useMemo(() => {
@@ -346,8 +378,8 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
             />
         )}
         
-        <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? 'Salvando...' : 'Salvar Transação'}
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting ? 'Salvando...' : 'Salvar Transação'}
         </Button>
       </form>
     </Form>
@@ -355,5 +387,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     </>
   );
 }
+
+    
 
     
