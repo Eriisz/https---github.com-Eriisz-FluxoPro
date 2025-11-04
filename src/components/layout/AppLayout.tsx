@@ -45,27 +45,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
 
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  React.useEffect(() => {
+    // Redirect to login if user is not loaded and not on an auth page
+    if (!isUserLoading && !user && !isAuthPage) {
+      router.push('/login');
+    }
+  }, [isUserLoading, user, isAuthPage, router]);
+
+
   const handleLogout = async () => {
     await signOut(auth);
     router.push('/login');
   };
 
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
-
-  if (isUserLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader className="w-16 h-16 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user && !isAuthPage) {
-    // router.push('/login') must be wrapped in a useEffect
-    // to avoid a NEXT_NAVIGATION error
-    React.useEffect(() => {
-        router.push('/login');
-    }, [router]);
+  if (isUserLoading || (!user && !isAuthPage)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader className="w-16 h-16 animate-spin text-primary" />
