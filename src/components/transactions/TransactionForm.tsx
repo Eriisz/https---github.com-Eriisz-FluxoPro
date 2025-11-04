@@ -1,8 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useTransition } from 'react';
-import { useFormState } from 'react-dom';
+import React, { useEffect, useState, useTransition, useActionState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -69,8 +68,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   
   const initialState: TransactionFormState = { message: "", errors: {} };
-  const [state, dispatch] = useFormState(addTransaction.bind(null, user?.uid || ''), initialState);
-  const [isPending, startTransition] = useTransition();
+  const [state, dispatch, isPending] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
 
   const categoriesQuery = useMemoFirebase(
     () => (user ? collection(firestore, `users/${user.uid}/categories`) : null),
@@ -124,9 +122,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     if(data.category) formData.append('category', data.category);
     formData.append('type', data.type);
     formData.append('installments', data.isRecurring ? data.installments || '1' : '1');
-    startTransition(() => {
-        dispatch(formData);
-    });
+    dispatch(formData);
   }
 
   const filteredCategories = React.useMemo(() => {
