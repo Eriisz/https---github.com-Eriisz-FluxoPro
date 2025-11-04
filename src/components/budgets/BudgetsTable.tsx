@@ -29,12 +29,13 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Budget } from '@/lib/definitions';
 import { formatCurrency } from '@/lib/utils';
-import { deleteBudget } from '@/lib/actions/budgets';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
 import { format, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { doc } from 'firebase/firestore';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface BudgetsTableProps {
   budgets: (Budget & { categoryName: string, categoryColor: string })[];
@@ -43,6 +44,7 @@ interface BudgetsTableProps {
 
 export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [budgetToDelete, setBudgetToDelete] = React.useState<Budget & {categoryName?: string} | null>(null);
@@ -54,7 +56,8 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
 
   const handleConfirmDelete = async () => {
     if (user && budgetToDelete) {
-      await deleteBudget(user.uid, budgetToDelete.id);
+      const budgetRef = doc(firestore, `users/${user.uid}/budgets`, budgetToDelete.id);
+      deleteDocumentNonBlocking(budgetRef);
       toast({
         title: 'Sucesso!',
         description: 'Orçamento deletado com sucesso.',

@@ -1,14 +1,11 @@
 'use client';
 
-import React, { useEffect, useTransition } from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
 
-import { useUser } from '@/firebase';
-import { saveAccount, type AccountFormState } from '@/lib/actions/accounts';
+import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -28,6 +25,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Account } from '@/lib/definitions';
+import { doc, setDoc, collection } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
@@ -40,15 +39,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function SubmitButton({ isEditing }: { isEditing: boolean }) {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Conta'}
-    </Button>
-  );
-}
-
 interface AccountFormProps {
   existingAccount?: Account;
   onFormSubmit: () => void;
@@ -56,16 +46,9 @@ interface AccountFormProps {
 
 export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps) {
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const isEditing = !!existingAccount;
-  const [isPending, startTransition] = useTransition();
-
-  const initialState: AccountFormState = { message: '', errors: {} };
-  const saveAccountWithIds = saveAccount.bind(null, user?.uid || '', existingAccount?.id || null);
-  const [state, dispatch] = useActionState(
-    saveAccountWithIds,
-    initialState
-  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -79,38 +62,33 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
 
   const accountType = form.watch('type');
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.errors) {
-        toast({
-          title: 'Erro ao salvar conta',
-          description: state.message,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Sucesso!',
-          description: state.message,
-        });
-        onFormSubmit();
-        form.reset();
-      }
+  async function onSubmit(data: FormValues) {
+    if (!user) {
+      toast({ title: 'Erro', description: 'Você precisa estar logado.', variant: 'destructive' });
+      return;
     }
-  }, [state, toast, onFormSubmit, form]);
 
-  function onSubmit(data: FormValues) {
-    const formData = new FormData();
-    formData.append('name', data.name);
-    formData.append('type', data.type);
-    if (!isEditing) {
-        formData.append('initialBalance', data.initialBalance || '0');
-    }
-    if (data.type === 'CartaoCredito' && data.limit) {
-      formData.append('limit', data.limit);
-    }
-    startTransition(() => {
-        dispatch(formData);
+    const id = existingAccount?.id || doc(collection(firestore, '_')).id;
+    const accountRef = doc(firestore, `users/${user.uid}/accounts`, id);
+
+    const accountData = {
+      id,
+      userId: user.uid,
+      name: data.name,
+      type: data.type,
+      ...(isEditing ? {} : { balance: parseFloat(data.initialBalance?.replace(',', '.') || '0') }),
+      ...(data.type === 'CartaoCredito' && data.limit ? { limit: parseFloat(data.limit.replace(',', '.')) } : {}),
+    };
+    
+    setDocumentNonBlocking(accountRef, accountData, { merge: true });
+    
+    toast({
+        title: 'Sucesso!',
+        description: `Conta ${isEditing ? 'atualizada' : 'criada'} com sucesso!`,
     });
+    
+    onFormSubmit();
+    form.reset();
   }
 
   return (
@@ -186,8 +164,8 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
             )}
           />
         )}
-        <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Conta'}
+        <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
+            {form.formState.isSubmitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Conta'}
         </Button>
       </form>
     </Form>

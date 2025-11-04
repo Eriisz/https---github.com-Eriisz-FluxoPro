@@ -29,10 +29,11 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Account } from '@/lib/definitions';
 import { formatCurrency } from '@/lib/utils';
-import { deleteAccount } from '@/lib/actions/accounts';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
+import { doc } from 'firebase/firestore';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface AccountsTableProps {
   accounts: Account[];
@@ -48,6 +49,7 @@ const accountTypeLabels: { [key: string]: string } = {
 
 export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [accountToDelete, setAccountToDelete] = React.useState<Account | null>(null);
@@ -59,7 +61,8 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
 
   const handleConfirmDelete = async () => {
     if (user && accountToDelete) {
-      await deleteAccount(user.uid, accountToDelete.id);
+      const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountToDelete.id);
+      deleteDocumentNonBlocking(accountRef);
       toast({
         title: 'Sucesso!',
         description: 'Conta deletada com sucesso.',

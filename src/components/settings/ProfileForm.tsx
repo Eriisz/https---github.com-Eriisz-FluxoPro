@@ -1,14 +1,11 @@
 'use client';
 
-import React, { useEffect, useTransition } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
 
-import { useUser } from '@/firebase';
-import { saveProfile, type ProfileFormState } from '@/lib/actions/settings';
+import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,6 +18,8 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { User as UserProfile } from '@/lib/definitions';
+import { doc } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
@@ -34,15 +33,8 @@ interface ProfileFormProps {
 
 export function ProfileForm({ userProfile }: ProfileFormProps) {
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-
-  const initialState: ProfileFormState = { message: '', errors: {} };
-  const saveProfileWithId = saveProfile.bind(null, user?.uid || '');
-  const [state, dispatch] = useActionState(
-    saveProfileWithId,
-    initialState
-  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -51,35 +43,20 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
     },
   });
   
-  useEffect(() => {
+  React.useEffect(() => {
     if (userProfile) {
         form.reset({ name: userProfile.name });
     }
   }, [userProfile, form]);
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.errors) {
-        toast({
-          title: 'Erro ao salvar perfil',
-          description: state.message,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Sucesso!',
-          description: state.message,
-        });
-      }
+  async function onSubmit(data: FormValues) {
+    if (!user) {
+        toast({ title: 'Erro', description: 'Você precisa estar logado.', variant: 'destructive' });
+        return;
     }
-  }, [state, toast]);
-
-  function onSubmit(data: FormValues) {
-    const formData = new FormData();
-    formData.append('name', data.name);
-    startTransition(() => {
-        dispatch(formData);
-    });
+    const userRef = doc(firestore, `users/${user.uid}`);
+    setDocumentNonBlocking(userRef, { name: data.name }, { merge: true });
+    toast({ title: 'Sucesso!', description: 'Perfil atualizado com sucesso.' });
   }
 
   return (
@@ -107,8 +84,8 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
                 O número de celular é usado para login e não pode ser alterado.
             </p>
         </FormItem>
-        <Button type="submit" disabled={isPending}>
-            {isPending ? 'Salvando...' : 'Salvar Alterações'}
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
         </Button>
       </form>
     </Form>

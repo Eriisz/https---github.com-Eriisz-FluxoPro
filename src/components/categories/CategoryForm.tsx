@@ -1,14 +1,11 @@
 'use client';
 
-import React, { useEffect, useTransition } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
 
-import { useUser } from '@/firebase';
-import { saveCategory, type CategoryFormState } from '@/lib/actions/categories';
+import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,6 +18,8 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { Category } from '@/lib/definitions';
+import { doc, collection } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
@@ -36,16 +35,9 @@ interface CategoryFormProps {
 
 export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormProps) {
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const isEditing = !!existingCategory;
-  const [isPending, startTransition] = useTransition();
-
-  const initialState: CategoryFormState = { message: '', errors: {} };
-  const saveCategoryWithIds = saveCategory.bind(null, user?.uid || '', existingCategory?.id || null);
-  const [state, dispatch] = useActionState(
-    saveCategoryWithIds,
-    initialState
-  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -55,32 +47,31 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
     },
   });
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.errors) {
-        toast({
-          title: 'Erro ao salvar categoria',
-          description: state.message,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Sucesso!',
-          description: state.message,
-        });
-        onFormSubmit();
-        form.reset();
-      }
+  async function onSubmit(data: FormValues) {
+    if (!user) {
+        toast({ title: 'Erro', description: 'Você precisa estar logado.', variant: 'destructive' });
+        return;
     }
-  }, [state, toast, onFormSubmit, form]);
 
-  function onSubmit(data: FormValues) {
-    const formData = new FormData();
-    formData.append('name', data.name);
-    formData.append('color', data.color);
-    startTransition(() => {
-        dispatch(formData);
+    const id = existingCategory?.id || doc(collection(firestore, '_')).id;
+    const categoryRef = doc(firestore, `users/${user.uid}/categories`, id);
+
+    const categoryData = {
+        id,
+        userId: user.uid,
+        name: data.name,
+        color: data.color,
+    };
+
+    setDocumentNonBlocking(categoryRef, categoryData, { merge: true });
+
+    toast({
+        title: 'Sucesso!',
+        description: `Categoria ${isEditing ? 'atualizada' : 'criada'} com sucesso!`,
     });
+
+    onFormSubmit();
+    form.reset();
   }
 
   return (
@@ -117,8 +108,8 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Categoria'}
+        <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
+            {form.formState.isSubmitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Categoria'}
         </Button>
       </form>
     </Form>

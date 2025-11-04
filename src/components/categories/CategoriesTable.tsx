@@ -28,10 +28,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Category } from '@/lib/definitions';
-import { deleteCategory } from '@/lib/actions/categories';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
+import { doc } from 'firebase/firestore';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface CategoriesTableProps {
   categories: Category[];
@@ -40,6 +41,7 @@ interface CategoriesTableProps {
 
 export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [categoryToDelete, setCategoryToDelete] = React.useState<Category | null>(null);
@@ -51,7 +53,8 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
 
   const handleConfirmDelete = async () => {
     if (user && categoryToDelete) {
-      await deleteCategory(user.uid, categoryToDelete.id);
+      const categoryRef = doc(firestore, `users/${user.uid}/categories`, categoryToDelete.id);
+      deleteDocumentNonBlocking(categoryRef);
       toast({
         title: 'Sucesso!',
         description: 'Categoria deletada com sucesso.',

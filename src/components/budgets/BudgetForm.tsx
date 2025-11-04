@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useEffect, useTransition } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
 import { format } from 'date-fns';
 
-import { useUser } from '@/firebase';
-import { saveBudget, type BudgetFormState } from '@/lib/actions/budgets';
+import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -29,6 +26,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Budget, Category } from '@/lib/definitions';
+import { doc, collection } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
   categoryId: z.string().min(1, 'Selecione uma categoria.'),
@@ -46,16 +45,9 @@ interface BudgetFormProps {
 
 export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetFormProps) {
   const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const isEditing = !!existingBudget;
-  const [isPending, startTransition] = useTransition();
-
-  const initialState: BudgetFormState = { message: '', errors: {} };
-  const saveBudgetWithIds = saveBudget.bind(null, user?.uid || '', existingBudget?.id || null);
-  const [state, dispatch] = useActionState(
-    saveBudgetWithIds,
-    initialState
-  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -66,33 +58,32 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
     },
   });
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.errors) {
-        toast({
-          title: 'Erro ao salvar orçamento',
-          description: state.message,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Sucesso!',
-          description: state.message,
-        });
-        onFormSubmit();
-        form.reset();
-      }
+  async function onSubmit(data: FormValues) {
+    if (!user) {
+      toast({ title: 'Erro', description: 'Você precisa estar logado.', variant: 'destructive' });
+      return;
     }
-  }, [state, toast, onFormSubmit, form]);
 
-  function onSubmit(data: FormValues) {
-    const formData = new FormData();
-    formData.append('categoryId', data.categoryId);
-    formData.append('limit', data.limit);
-    formData.append('month', data.month);
-    startTransition(() => {
-        dispatch(formData);
+    const id = existingBudget?.id || doc(collection(firestore, '_')).id;
+    const budgetRef = doc(firestore, `users/${user.uid}/budgets`, id);
+
+    const budgetData = {
+      id,
+      userId: user.uid,
+      categoryId: data.categoryId,
+      limit: parseFloat(data.limit.replace(',', '.')),
+      month: data.month,
+    };
+
+    setDocumentNonBlocking(budgetRef, budgetData, { merge: true });
+    
+    toast({
+        title: 'Sucesso!',
+        description: `Orçamento ${isEditing ? 'atualizado' : 'criado'} com sucesso!`,
     });
+
+    onFormSubmit();
+    form.reset();
   }
 
   return (
@@ -149,8 +140,8 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Orçamento'}
+        <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
+            {form.formState.isSubmitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Orçamento'}
         </Button>
       </form>
     </Form>
