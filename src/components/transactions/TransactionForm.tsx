@@ -53,14 +53,6 @@ const formSchema = z.object({
     type: z.enum(['income', 'expense'], { required_error: "Selecione o tipo." }),
     isRecurring: z.boolean().default(false),
     installments: z.string().optional(),
-  }).superRefine((data, ctx) => {
-    if (data.type === 'expense' && !data.category) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['category'],
-            message: "Selecione uma categoria.",
-        });
-    }
   });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -68,10 +60,10 @@ type FormValues = z.infer<typeof formSchema>;
 export function TransactionForm({ accounts, categories, onFormSubmit }: TransactionFormProps) {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
   
   const initialState: TransactionFormState = { message: "", errors: {} };
   const [state, dispatch] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -88,6 +80,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
   });
 
   const isRecurring = form.watch('isRecurring');
+  const transactionType = form.watch('type');
 
   useEffect(() => {
     if (state.message) {
@@ -122,6 +115,15 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
     });
   }
 
+  const filteredCategories = React.useMemo(() => {
+    const incomeCategoryNames = ['Receita', 'Salário', 'Freelance', 'Investimentos', 'Outras Receitas'];
+    if (transactionType === 'income') {
+        return categories.filter(c => incomeCategoryNames.includes(c.name));
+    }
+    return categories.filter(c => !incomeCategoryNames.includes(c.name));
+  }, [categories, transactionType]);
+
+
   if (isUserLoading) return <div>Carregando...</div>;
 
   return (
@@ -136,12 +138,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
                 <RadioGroup
                   onValueChange={(value) => {
                     field.onChange(value);
-                    const incomeCategory = categories.find(c => c.name === "Receita");
-                    if (value === 'income' && incomeCategory) {
-                      form.setValue('category', incomeCategory.name);
-                    } else {
-                      form.setValue('category', '');
-                    }
+                    form.setValue('category', '');
                   }}
                   defaultValue={field.value}
                   className="flex justify-center space-x-4"
@@ -217,14 +214,14 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Categoria</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value} disabled={form.getValues('type') === 'income'}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {categories.map(c => (
+                    {filteredCategories.map(c => (
                       <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>

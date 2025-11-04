@@ -128,7 +128,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Painel de Controle">
-        <TransactionDialog accounts={data.accounts} categories={data.categories.filter(c => c.name !== 'Receita')} />
+        <TransactionDialog accounts={data.accounts} categories={data.categories} />
       </PageHeader>
 
       <OverviewCards 
