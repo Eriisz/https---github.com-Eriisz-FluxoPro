@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -70,7 +70,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
   const { toast } = useToast();
   
   const initialState: TransactionFormState = { message: "", errors: {} };
-  const [state, dispatch] = useFormState(addTransaction.bind(null, userId || ''), initialState);
+  const [state, dispatch] = useActionState(addTransaction.bind(null, userId || ''), initialState);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
