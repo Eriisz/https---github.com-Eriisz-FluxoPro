@@ -3,8 +3,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getserverFirestore } from "@/lib/server/firebase";
 
 const budgetSchema = z.object({
@@ -40,7 +39,7 @@ export async function saveBudget(userId: string, budgetId: string | null | undef
     
     const { data } = validatedFields;
     const db = getserverFirestore();
-    const id = budgetId || doc(collection(db, '_')).id; // generate id client-side if new
+    const id = budgetId || doc(collection(db, '_')).id;
     const budgetRef = doc(db, `users/${userId}/budgets`, id);
 
     const budgetData = {
@@ -51,7 +50,11 @@ export async function saveBudget(userId: string, budgetId: string | null | undef
         month: data.month,
     };
     
-    setDocumentNonBlocking(budgetRef, budgetData, { merge: true });
+    try {
+        await setDoc(budgetRef, budgetData, { merge: true });
+    } catch (e: any) {
+        return { message: `Erro ao salvar orçamento: ${e.message}`, errors: { db: [e.message] } };
+    }
 
     revalidatePath("/budgets");
     revalidatePath("/");
@@ -66,7 +69,13 @@ export async function deleteBudget(userId: string, budgetId: string) {
     }
     const db = getserverFirestore();
     const budgetRef = doc(db, `users/${userId}/budgets`, budgetId);
-    deleteDocumentNonBlocking(budgetRef);
+    
+    try {
+        await deleteDoc(budgetRef);
+    } catch (e: any) {
+        console.error("Erro ao deletar orçamento:", e.message);
+    }
+
     revalidatePath("/budgets");
     revalidatePath("/");
 }

@@ -3,8 +3,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { doc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { getserverFirestore } from "@/lib/server/firebase";
 
 const profileSchema = z.object({
@@ -42,7 +41,11 @@ export async function saveProfile(userId: string, prevState: ProfileFormState, f
         name: data.name,
     };
     
-    setDocumentNonBlocking(userRef, profileData, { merge: true });
+    try {
+        await setDoc(userRef, profileData, { merge: true });
+    } catch (e: any) {
+        return { message: `Erro ao salvar perfil: ${e.message}`, errors: { db: [e.message] } };
+    }
 
     revalidatePath("/settings");
     revalidatePath("/"); // To update sidebar with new name

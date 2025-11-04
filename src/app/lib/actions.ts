@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { addMonths, format } from "date-fns";
 import { checkBudgetAndAlert } from "@/ai/flows/budgeting-alerts";
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { getserverFirestore } from "@/lib/server/firebase";
+
 
 async function getBudgetForCategory(userId: string, categoryId: string, month: string): Promise<number> {
     const db = getserverFirestore();
@@ -99,8 +99,11 @@ export async function addTransaction(
       groupId,
       installments: data.installments > 1 ? { current: i + 1, total: data.installments } : undefined,
     };
-
-    addDocumentNonBlocking(transactionsCol, newTransaction);
+    try {
+        await addDoc(transactionsCol, newTransaction);
+    } catch(e: any) {
+        return { message: `Erro ao adicionar transação: ${e.message}`, errors: { db: [e.message] } };
+    }
   }
   
   // Verifica o orçamento para despesas

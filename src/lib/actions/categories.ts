@@ -3,8 +3,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getserverFirestore } from "@/lib/server/firebase";
 
 const categorySchema = z.object({
@@ -38,7 +37,7 @@ export async function saveCategory(userId: string, categoryId: string | null | u
     
     const { data } = validatedFields;
     const db = getserverFirestore();
-    const id = categoryId || doc(collection(db, '_')).id; // generate id client-side if new
+    const id = categoryId || doc(collection(db, '_')).id;
     const categoryRef = doc(db, `users/${userId}/categories`, id);
 
     const categoryData = {
@@ -48,7 +47,11 @@ export async function saveCategory(userId: string, categoryId: string | null | u
         color: data.color,
     };
     
-    setDocumentNonBlocking(categoryRef, categoryData, { merge: true });
+    try {
+        await setDoc(categoryRef, categoryData, { merge: true });
+    } catch (e: any) {
+        return { message: `Erro ao salvar categoria: ${e.message}`, errors: { db: [e.message] } };
+    }
 
     revalidatePath("/categories");
     revalidatePath("/"); // To update charts
@@ -63,7 +66,14 @@ export async function deleteCategory(userId: string, categoryId: string) {
     }
     const db = getserverFirestore();
     const categoryRef = doc(db, `users/${userId}/categories`, categoryId);
-    deleteDocumentNonBlocking(categoryRef);
+    
+    try {
+        await deleteDoc(categoryRef);
+    } catch (e: any) {
+        console.error("Erro ao deletar categoria:", e.message);
+        // In a real app, you might want to return an error state.
+    }
+    
     revalidatePath("/categories");
     revalidatePath("/");
 }

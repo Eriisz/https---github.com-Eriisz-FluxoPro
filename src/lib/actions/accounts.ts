@@ -3,8 +3,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getserverFirestore } from "@/lib/server/firebase";
 
 const accountSchema = z.object({
@@ -42,7 +41,7 @@ export async function saveAccount(userId: string, accountId: string | null | und
     
     const { data } = validatedFields;
     const db = getserverFirestore();
-    const id = accountId || doc(collection(db, '_')).id; // generate id client-side if new
+    const id = accountId || doc(collection(db, '_')).id;
     const accountRef = doc(db, `users/${userId}/accounts`, id);
 
     const accountData = {
@@ -54,7 +53,11 @@ export async function saveAccount(userId: string, accountId: string | null | und
         ...(data.type === 'CartaoCredito' && data.limit ? { limit: data.limit } : {}),
     };
     
-    setDocumentNonBlocking(accountRef, accountData, { merge: true });
+    try {
+        await setDoc(accountRef, accountData, { merge: true });
+    } catch (e: any) {
+        return { message: `Erro ao salvar conta: ${e.message}`, errors: { db: [e.message] } };
+    }
 
     revalidatePath("/accounts");
     revalidatePath("/");
@@ -69,7 +72,13 @@ export async function deleteAccount(userId: string, accountId: string) {
     }
     const db = getserverFirestore();
     const accountRef = doc(db, `users/${userId}/accounts`, accountId);
-    deleteDocumentNonBlocking(accountRef);
+    
+    try {
+        await deleteDoc(accountRef);
+    } catch (e: any) {
+        console.error("Erro ao deletar conta:", e.message);
+    }
+
     revalidatePath("/accounts");
     revalidatePath("/");
 }
