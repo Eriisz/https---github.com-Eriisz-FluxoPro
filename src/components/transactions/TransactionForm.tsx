@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useTransition } from 'react';
+import React, { useEffect, useTransition, useState } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Calculator as CalculatorIcon } from 'lucide-react';
+import { CalendarIcon, Calculator as CalculatorIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -37,6 +37,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Account, Category } from '@/lib/definitions';
+import { CategoryDialog } from '../categories/CategoryDialog';
 
 interface TransactionFormProps {
     accounts: Account[];
@@ -60,6 +61,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function TransactionForm({ accounts, categories, onFormSubmit }: TransactionFormProps) {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   
   const initialState: TransactionFormState = { message: "", errors: {} };
   const [state, dispatch] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
@@ -116,17 +118,17 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
   }
 
   const filteredCategories = React.useMemo(() => {
-    const incomeCategoryNames = ['Receita', 'Salário', 'Freelance', 'Investimentos', 'Outras Receitas'];
     if (transactionType === 'income') {
-        return categories.filter(c => incomeCategoryNames.includes(c.name));
+        return categories.filter(c => c.name === 'Receita' || c.name === 'Salário' || c.name === 'Investimentos' || c.name === 'Outras Receitas' || c.name === 'Freelance');
     }
-    return categories.filter(c => !incomeCategoryNames.includes(c.name));
+    return categories.filter(c => c.name !== 'Receita' && c.name !== 'Salário' && c.name !== 'Investimentos' && c.name !== 'Outras Receitas' && c.name !== 'Freelance');
   }, [categories, transactionType]);
 
 
   if (isUserLoading) return <div>Carregando...</div>;
 
   return (
+    <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
@@ -214,6 +216,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Categoria</FormLabel>
+                <div className="flex items-center gap-2">
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -226,6 +229,10 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
                     ))}
                   </SelectContent>
                 </Select>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setCategoryDialogOpen(true)}>
+                    <PlusCircle className="h-4 w-4"/>
+                </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -335,5 +342,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
         </Button>
       </form>
     </Form>
+    <CategoryDialog isOpen={categoryDialogOpen} onOpenChange={setCategoryDialogOpen} />
+    </>
   );
 }
