@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   SidebarProvider,
   Sidebar,
@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
+  SidebarFooter,
 } from '@/components/ui/sidebar';
 import {
   DollarSign,
@@ -20,10 +21,14 @@ import {
   Settings,
   Tags,
   Menu,
+  LogOut,
+  Loader,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Link from 'next/link';
+import { useAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const navItems = [
   { href: '/', label: 'Painel', icon: LayoutDashboard },
@@ -36,6 +41,42 @@ const navItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
+
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  if (isUserLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader className="w-16 h-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user && !isAuthPage) {
+    // router.push('/login') must be wrapped in a useEffect
+    // to avoid a NEXT_NAVIGATION error
+    React.useEffect(() => {
+        router.push('/login');
+    }, [router]);
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader className="w-16 h-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
+
 
   const sidebarContent = (
     <>
@@ -62,6 +103,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
         </SidebarMenu>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleLogout} className="text-base">
+                    <LogOut className="w-5 h-5" />
+                    <span>Sair</span>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </>
   );
 

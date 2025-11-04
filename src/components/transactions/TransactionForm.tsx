@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { useActionState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,7 +10,7 @@ import { CalendarIcon, Calculator as CalculatorIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-import { useUser } from '@/contexts/UserContext';
+import { useUser } from '@/firebase';
 import { addTransaction, type TransactionFormState } from '@/app/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,11 +67,11 @@ function SubmitButton() {
 }
 
 export function TransactionForm({ accounts, categories, onFormSubmit }: TransactionFormProps) {
-  const { userId, isLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   
   const initialState: TransactionFormState = { message: "", errors: {} };
-  const [state, dispatch] = useActionState(addTransaction.bind(null, userId || ''), initialState);
+  const [state, dispatch] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -119,7 +120,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
     dispatch(formData);
   }
 
-  if (isLoading) return <div>Carregando...</div>;
+  if (isUserLoading) return <div>Carregando...</div>;
 
   return (
     <Form {...form}>

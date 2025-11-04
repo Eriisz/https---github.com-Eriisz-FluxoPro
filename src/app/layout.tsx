@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { UserProvider } from '@/contexts/UserContext';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'FluxoPro - Gestão Financeira PRO',
@@ -25,12 +25,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <UserProvider>
+        <FirebaseClientProvider>
           <AppLayout>
             {children}
           </AppLayout>
           <Toaster />
-        </UserProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

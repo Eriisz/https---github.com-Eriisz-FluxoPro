@@ -1,3 +1,4 @@
+'use client';
 import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
@@ -17,43 +18,46 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import type { Transaction, Category } from "@/lib/definitions";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader } from "lucide-react";
+import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
-// Dados fictícios - Em uma aplicação real, isso viria do Firestore
-const MOCK_CATEGORIES: Category[] = [
-    { id: '1', userId: '1', name: 'Receita', color: 'hsl(var(--primary))' },
-    { id: '2', userId: '1', name: 'Moradia', color: '#3B82F6' },
-    { id: '3', userId: '1', name: 'Alimentação', color: '#F97316' },
-    { id: '4', userId: '1', name: 'Transporte', color: '#8B5CF6' },
-    { id: '5', userId: '1', name: 'Lazer', color: '#EC4899' },
-    { id: '6', userId: '1', name: 'Saúde', color: '#14B8A6' },
-    { id: '7', userId: '1', name: 'Outros', color: '#A1A1AA' },
-]
+export default function HistoryPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: '1', userId: '1', description: 'Salário', category: 'Receita', value: 5000, date: new Date(2024, 6, 5).toISOString(), account: 'Conta Corrente', type: 'income' },
-  { id: '2', userId: '1', description: 'Aluguel', category: 'Moradia', value: -1500, date: new Date(2024, 6, 10).toISOString(), account: 'Conta Corrente', type: 'expense' },
-  { id: '3', userId: '1', description: 'Supermercado', category: 'Alimentação', value: -450, date: new Date(2024, 6, 12).toISOString(), account: 'Cartão de Crédito', type: 'expense' },
-  { id: '4', userId: '1', description: 'Gasolina', category: 'Transporte', value: -150, date: new Date(2024, 6, 15).toISOString(), account: 'Cartão de Crédito', type: 'expense' },
-  { id: '5', userId: '1', description: 'Cinema', category: 'Lazer', value: -80, date: new Date(2024, 6, 18).toISOString(), account: 'Cartão de Crédito', type: 'expense' },
-  { id: '6', userId: '1', description: 'Freelance', category: 'Receita', value: 750, date: new Date(2024, 6, 20).toISOString(), account: 'Conta Corrente', type: 'income' },
-  { id: '7', userId: '1', description: 'Conta de Luz', category: 'Moradia', value: -120, date: new Date(2024, 6, 22).toISOString(), account: 'Conta Corrente', type: 'expense' },
-  { id: '8', userId: '1', description: 'Restaurante', category: 'Alimentação', value: -120, date: new Date(2024, 6, 25).toISOString(), account: 'Cartão de Crédito', type: 'expense' },
-];
+  const transactionsQuery = useMemoFirebase(() => 
+    user ? query(collection(firestore, `users/${user.uid}/transactions`), orderBy('date', 'desc')) : null, 
+    [firestore, user]
+  );
+  
+  const categoriesQuery = useMemoFirebase(() => 
+    user ? collection(firestore, `users/${user.uid}/categories`) : null, 
+    [firestore, user]
+  );
 
-async function getHistoryData() {
-  const transactions = MOCK_TRANSACTIONS
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .map(t => {
-        const category = MOCK_CATEGORIES.find(c => c.name === t.category);
-        return {...t, categoryColor: category?.color || '#A9A9A9'}
+  const { data: transactions, isLoading: loadingTransactions } = useCollection<Transaction>(transactionsQuery);
+  const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
+
+  const getHistoryData = () => {
+    const enrichedTransactions = (transactions || []).map(t => {
+      const category = (categories || []).find(c => c.name === t.category);
+      return { ...t, categoryColor: category?.color || '#A9A9A9' };
     });
-  return { transactions };
-}
+    return { transactions: enrichedTransactions };
+  }
 
+  const { transactions: historyTransactions } = getHistoryData();
+  const isLoading = loadingTransactions || loadingCategories;
 
-export default async function HistoryPage() {
-  const { transactions } = await getHistoryData();
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader className="w-8 h-8 animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -77,7 +81,7 @@ export default async function HistoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((transaction) => (
+              {historyTransactions.map((transaction) => (
                 <TableRow key={transaction.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">

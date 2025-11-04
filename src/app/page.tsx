@@ -1,90 +1,118 @@
+'use client';
 import { PageHeader } from "@/components/PageHeader";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
 import type { Transaction, Category, Account } from "@/lib/definitions";
+import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, where, limit, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
-// Dados fictícios - Em uma aplicação real, isso viria do Firestore
-const MOCK_ACCOUNTS: Account[] = [
-  { id: '1', userId: '1', name: 'Conta Corrente', type: 'ContaCorrente', balance: 7820 },
-  { id: '2', userId: '1', name: 'Cartão de Crédito', type: 'CartaoCredito', balance: 0, limit: 10000 },
-];
 
-const MOCK_CATEGORIES: Category[] = [
-    { id: '1', userId: '1', name: 'Receita', color: 'hsl(var(--primary))' },
-    { id: '2', userId: '1', name: 'Moradia', color: '#3B82F6' },
-    { id: '3', userId: '1', name: 'Alimentação', color: '#F97316' },
-    { id: '4', userId: '1', name: 'Transporte', color: '#8B5CF6' },
-    { id: '5', userId: '1', name: 'Lazer', color: '#EC4899' },
-    { id: '6', userId: '1', name: 'Saúde', color: '#14B8A6' },
-    { id: '7', userId: '1', name: 'Outros', color: '#A1A1AA' },
-]
+export default function DashboardPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: '1', userId: '1', description: 'Salário', category: 'Receita', value: 5000, date: new Date(2024, 6, 5).toISOString(), account: 'Conta Corrente', type: 'income' },
-  { id: '2', userId: '1', description: 'Aluguel', category: 'Moradia', value: -1500, date: new Date(2024, 6, 10).toISOString(), account: 'Conta Corrente', type: 'expense' },
-  { id: '3', userId: '1', description: 'Supermercado', category: 'Alimentação', value: -450, date: new Date(2024, 6, 12).toISOString(), account: 'Cartão de Crédito', type: 'expense' },
-  { id: '4', userId: '1', description: 'Gasolina', category: 'Transporte', value: -150, date: new Date(2024, 6, 15).toISOString(), account: 'Cartão de Crédito', type: 'expense' },
-  { id: '5', userId: '1', description: 'Cinema', category: 'Lazer', value: -80, date: new Date(2024, 6, 18).toISOString(), account: 'Cartão de Crédito', type: 'expense' },
-];
+  const accountsQuery = useMemoFirebase(() => 
+    user ? collection(firestore, `users/${user.uid}/accounts`) : null, [firestore, user]);
+  const categoriesQuery = useMemoFirebase(() => 
+    user ? collection(firestore, `users/${user.uid}/categories`) : null, [firestore, user]);
 
-const MOCK_MONTHLY_FLOW = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    return {
-        month: d.toLocaleString('pt-BR', { month: 'short' }),
-        income: Math.random() * 5000 + 2000,
-        expenses: Math.random() * -4000 - 1000,
-    }
-}).reverse();
-
-async function getDashboardData() {
-  // Em uma aplicação real, você buscaria os dados do Firestore usando o userId.
-  // Por enquanto, usamos dados fictícios.
-  const transactions = MOCK_TRANSACTIONS;
-  const categories = MOCK_CATEGORIES;
-  const accounts = MOCK_ACCOUNTS;
+  const now = new Date();
+  const oneMonthAgo = startOfMonth(now);
   
-  const balance = transactions.reduce((acc, t) => acc + t.value, 0);
-  const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.value, 0);
-  const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.value, 0);
+  const currentMonthTransactionsQuery = useMemoFirebase(() =>
+    user ? query(
+      collection(firestore, `users/${user.uid}/transactions`),
+      where('date', '>=', oneMonthAgo.toISOString()),
+      where('date', '<=', endOfMonth(now).toISOString())
+    ) : null, [firestore, user]
+  );
   
-  const categorySpending = categories
-    .filter(c => c.name !== 'Receita')
-    .map(category => {
-        const total = transactions
-            .filter(t => t.category === category.name && t.type === 'expense')
-            .reduce((acc, t) => acc + Math.abs(t.value), 0);
-        return { category: category.name, total, fill: category.color };
-    })
-    .filter(c => c.total > 0);
+  const allTransactionsQuery = useMemoFirebase(() =>
+      user ? query(
+          collection(firestore, `users/${user.uid}/transactions`),
+          orderBy('date', 'desc')
+      ) : null, [firestore, user]
+  );
 
-  const recentTransactions = transactions
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5)
-    .map(t => {
-        const category = categories.find(c => c.name === t.category);
-        return {...t, categoryColor: category?.color || '#A9A9A9'}
-    });
+  const recentTransactionsQuery = useMemoFirebase(() =>
+    user ? query(
+      collection(firestore, `users/${user.uid}/transactions`),
+      orderBy('date', 'desc'),
+      limit(5)
+    ) : null, [firestore, user]
+  );
+
+  const { data: accounts, isLoading: loadingAccounts } = useCollection<Account>(accountsQuery);
+  const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
+  const { data: currentMonthTransactions, isLoading: loadingCurrentMonthTransactions } = useCollection<Transaction>(currentMonthTransactionsQuery);
+  const { data: allTransactions, isLoading: loadingAllTransactions } = useCollection<Transaction>(allTransactionsQuery);
+  const { data: recentTransactionsData, isLoading: loadingRecent } = useCollection<Transaction>(recentTransactionsQuery);
+
+
+  const getDashboardData = () => {
+    const transactions = currentMonthTransactions || [];
     
-  return {
-    accounts,
-    categories,
-    balance,
-    income,
-    expenses,
-    totalBudget: 2500, // fictício
-    spentThisMonth: Math.abs(expenses), // fictício
-    categorySpending,
-    monthlyFlow: MOCK_MONTHLY_FLOW.map(d => ({ ...d, expenses: Math.abs(d.expenses) })),
-    recentTransactions,
-  };
-}
+    const balance = (allTransactions || []).reduce((acc, t) => acc + t.value, 0);
+    const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.value, 0);
+    const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.value, 0);
+    
+    const categorySpending = (categories || [])
+      .filter(c => c.name !== 'Receita')
+      .map(category => {
+          const total = transactions
+              .filter(t => t.category === category.name && t.type === 'expense')
+              .reduce((acc, t) => acc + Math.abs(t.value), 0);
+          return { category: category.name, total, fill: category.color };
+      })
+      .filter(c => c.total > 0);
 
+    const recentTransactions = (recentTransactionsData || [])
+      .map(t => {
+          const category = (categories || []).find(c => c.name === t.category);
+          return {...t, categoryColor: category?.color || '#A9A9A9'}
+      });
+      
+    const monthlyFlow = Array.from({ length: 12 }, (_, i) => {
+        const monthDate = subMonths(new Date(), i);
+        const start = startOfMonth(monthDate);
+        const end = endOfMonth(monthDate);
 
-export default async function DashboardPage() {
-  const data = await getDashboardData();
+        const monthTransactions = (allTransactions || []).filter(t => {
+            const tDate = new Date(t.date);
+            return tDate >= start && tDate <= end;
+        });
+        
+        return {
+            month: start.toLocaleString('pt-BR', { month: 'short' }),
+            income: monthTransactions.filter(t=> t.type === 'income').reduce((acc, t) => acc + t.value, 0),
+            expenses: monthTransactions.filter(t=> t.type === 'expense').reduce((acc, t) => acc + t.value, 0)
+        }
+    }).reverse();
+      
+    return {
+      accounts: accounts || [],
+      categories: categories || [],
+      balance,
+      income,
+      expenses,
+      totalBudget: 2500, // TODO: Replace with real budget data
+      spentThisMonth: Math.abs(expenses),
+      categorySpending,
+      monthlyFlow: monthlyFlow.map(d => ({ ...d, expenses: Math.abs(d.expenses) })),
+      recentTransactions,
+    };
+  }
+
+  const data = getDashboardData();
+  const isLoading = loadingAccounts || loadingCategories || loadingCurrentMonthTransactions || loadingRecent || loadingAllTransactions;
+  
+  if (isLoading) {
+      return <div>Carregando dados...</div>
+  }
 
   return (
     <div className="flex flex-col gap-8">
