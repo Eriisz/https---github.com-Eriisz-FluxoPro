@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { useActionState, useFormStatus } from 'react';
 
 import { useUser } from '@/firebase';
-import { saveAccount, type AccountFormState } from '@/app/lib/actions';
+import { saveAccount, type AccountFormState } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {

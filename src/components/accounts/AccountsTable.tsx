@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import type { Account } from '@/lib/definitions';
 import { formatCurrency } from '@/lib/utils';
-import { deleteAccount } from '@/app/lib/actions';
+import { deleteAccount } from '@/lib/actions';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
