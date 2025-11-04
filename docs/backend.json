@@ -1,0 +1,325 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the FluxoPro application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The user's phone number used for login."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "phoneNumber"
+      ]
+    },
+    "Transaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents a financial transaction (income or expense).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Transaction entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Transaction)"
+        },
+        "value": {
+          "type": "number",
+          "description": "The value of the transaction. Negative values represent expenses."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date of the transaction.",
+          "format": "date-time"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N Transaction)"
+        },
+        "accountId": {
+          "type": "string",
+          "description": "Reference to Account. (Relationship: Account 1:N Transaction)"
+        },
+        "groupId": {
+          "type": "string",
+          "description": "Identifier for recurring or installment transactions."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the transaction."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "value",
+        "date",
+        "categoryId",
+        "accountId"
+      ]
+    },
+    "Account": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Account",
+      "type": "object",
+      "description": "Represents a user's account or credit card.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Account entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Account)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the account."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of account (e.g., ContaCorrente, CartaoCredito, Investimento)."
+        },
+        "limit": {
+          "type": "number",
+          "description": "The credit limit for credit card accounts."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "type"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a user-defined category for transactions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Category entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Category)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name"
+      ]
+    },
+    "CategoryColor": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CategoryColor",
+      "type": "object",
+      "description": "Maps a color to a category for visualization purposes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CategoryColor entity."
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:1 CategoryColor)"
+        },
+        "color": {
+          "type": "string",
+          "description": "The color associated with the category (e.g., #FF0000)."
+        }
+      },
+      "required": [
+        "id",
+        "categoryId",
+        "color"
+      ]
+    },
+    "Budget": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Budget",
+      "type": "object",
+      "description": "Represents a monthly budget for a specific category.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Budget entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Budget)"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to Category. (Relationship: Category 1:N Budget)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "The monthly budget limit for the category."
+        },
+        "month": {
+          "type": "string",
+          "description": "The month for which the budget is defined (e.g., 2024-01).",
+          "format": "date"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "categoryId",
+        "limit",
+        "month"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. 'userId' is the Firebase Auth UID. Includes 'phoneNumber' for phone number-based authentication.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/accounts/{accountId}",
+        "definition": {
+          "entityName": "Account",
+          "schema": {
+            "$ref": "#/backend/entities/Account"
+          },
+          "description": "Stores user accounts. Path-based ownership ensures only the user can access their accounts.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "accountId",
+              "description": "The unique ID of the account."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores user-defined categories. Path-based ownership ensures only the user can access their categories.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "categoryId",
+              "description": "The unique ID of the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/category_colors/{categoryColorId}",
+        "definition": {
+          "entityName": "CategoryColor",
+          "schema": {
+            "$ref": "#/backend/entities/CategoryColor"
+          },
+          "description": "Stores category color mappings. Path-based ownership ensures only the user can access their category color mappings.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "categoryColorId",
+              "description": "The unique ID of the category color mapping."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/budgets/{budgetId}",
+        "definition": {
+          "entityName": "Budget",
+          "schema": {
+            "$ref": "#/backend/entities/Budget"
+          },
+          "description": "Stores user budgets. Path-based ownership ensures only the user can access their budgets.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "budgetId",
+              "description": "The unique ID of the budget."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/transactions/{transactionId}",
+        "definition": {
+          "entityName": "Transaction",
+          "schema": {
+            "$ref": "#/backend/entities/Transaction"
+          },
+          "description": "Stores user transactions. Path-based ownership ensures only the user can access their transactions.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "transactionId",
+              "description": "The unique ID of the transaction."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to manage personal finances with a focus on automation, visualization, and user customization. It prioritizes authorization independence by using path-based ownership for user-specific data. This eliminates the need for `get()` calls in security rules, allowing for atomic operations and easier debugging.\n\n*   **Users Collection:** Stores user profiles with `phoneNumber` and `createdAt` fields. The `id` is automatically generated by Firebase Authentication.\n*   **User-Owned Data:** Accounts, Categories, CategoryColors, Budgets, and Transactions are stored as subcollections under the `/users/{userId}` path. This ensures that only the authenticated user can access their own data. The User ID is stored in localStorage on the client side for immediate use after login, removing any latency in obtaining the Auth ID.\n*   **Authorization Independence:** All data is stored under the user's document (`/users/{userId}`). This means that access control can be enforced using path-based rules, without needing to read any data from parent documents. For example, to secure the `transactions` collection, the rule would simply check if `request.auth.uid == userId`.\n*   **Homogeneous Security Posture:** The use of subcollections guarantees that all documents within a collection have the same security requirements (e.g., all documents in `/users/{userId}/transactions` can only be accessed by the user with ID `userId`).\n*   **Support for QAPs:**\n    *   List operations are secured by path-based rules ensuring that a user can only list data under their own user ID.\n    *   The consistent use of path-based ownership and the elimination of `get()` calls in security rules contribute to a robust and secure data access model.\n\nThis structure facilitates clear and concise security rules, enhances maintainability, and provides a solid foundation for building a feature-rich financial management application."
+  }
+}
