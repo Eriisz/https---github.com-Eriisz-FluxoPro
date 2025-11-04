@@ -38,3 +38,10 @@ export type Budget = {
   limit: number;
   month: string; // YYYY-MM
 };
+
+export type User = {
+    id: string;
+    name: string;
+    phoneNumber: string;
+    createdAt: string;
+}

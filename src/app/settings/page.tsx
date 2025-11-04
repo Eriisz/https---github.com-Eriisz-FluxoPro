@@ -1,19 +1,45 @@
-import { PageHeader } from "@/components/PageHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+'use client';
+
+import { PageHeader } from '@/components/PageHeader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ProfileForm } from '@/components/settings/ProfileForm';
+import { useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { User as UserProfile } from '@/lib/definitions';
+import { Loader } from 'lucide-react';
 
 export default function SettingsPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, `users/${user.uid}`) : null),
+    [firestore, user]
+  );
+
+  const { data: userProfile, isLoading } = useDoc<UserProfile>(userDocRef);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Ajustes" />
       <Card>
         <CardHeader>
-          <CardTitle>Em Breve</CardTitle>
+          <CardTitle>Perfil</CardTitle>
           <CardDescription>
-            A página de ajustes e configurações estará disponível em breve.
+            Gerencie as informações do seu perfil.
           </CardDescription>
         </CardHeader>
         <CardContent>
-            <p>Aqui você poderá configurar suas preferências, exportar dados e gerenciar seu perfil.</p>
+          <ProfileForm userProfile={userProfile} />
         </CardContent>
       </Card>
     </div>

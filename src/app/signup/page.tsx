@@ -23,6 +23,7 @@ import { useFirestore } from '@/firebase';
 import { FirebaseError } from 'firebase/app';
 
 export default function SignupPage() {
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -44,20 +45,20 @@ export default function SignupPage() {
     try {
         // We are using a dummy domain since we are using phone number as the identifier
         const email = `${phone}@fluxopro.com`;
-        await initiateEmailSignUp(auth, email, password);
+        const userCredential = await initiateEmailSignUp(auth, email, password);
 
-        // This assumes that onAuthStateChanged will give us the user object
-        // in time. A more robust solution might listen for the user object.
-        auth.onAuthStateChanged(user => {
-            if(user) {
-                const userRef = doc(firestore, 'users', user.uid);
-                setDocumentNonBlocking(userRef, {
-                    id: user.uid,
-                    phoneNumber: phone,
-                    createdAt: new Date().toISOString(),
-                }, { merge: true });
-            }
-        });
+        // The user object is available in the credential post-signup.
+        if (userCredential && userCredential.user) {
+            const user = userCredential.user;
+            const userRef = doc(firestore, 'users', user.uid);
+            setDocumentNonBlocking(userRef, {
+                id: user.uid,
+                name: name,
+                phoneNumber: phone,
+                createdAt: new Date().toISOString(),
+            }, { merge: true });
+        }
+        
 
         toast({
             title: 'Cadastro realizado com sucesso!',
@@ -68,7 +69,10 @@ export default function SignupPage() {
         let description = 'Ocorreu um erro desconhecido. Tente novamente.';
         if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
             description = 'Este número de celular já está em uso. Tente fazer login.';
-        } else if (error.message) {
+        } else if (error instanceof FirebaseError && error.code === 'auth/weak-password') {
+            description = 'A senha é muito fraca. Ela deve ter pelo menos 6 caracteres.';
+        }
+        else if (error.message) {
             description = error.message;
         }
         
@@ -87,11 +91,23 @@ export default function SignupPage() {
           <DollarSign className="w-12 h-12 text-primary mx-auto mb-4" />
           <CardTitle className="text-2xl">Criar Conta FluxoPro</CardTitle>
           <CardDescription>
-            Digite seu celular e crie uma senha para começar
+            Preencha seus dados para começar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nome Completo</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Seu nome"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+              />
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="phone">Celular</Label>
               <Input
@@ -112,7 +128,7 @@ export default function SignupPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Mínimo 6 caracteres"
                 autoComplete="new-password"
               />
             </div>

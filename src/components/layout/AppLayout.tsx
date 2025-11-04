@@ -23,12 +23,17 @@ import {
   Menu,
   LogOut,
   Loader,
+  User as UserIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Link from 'next/link';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import type { User as UserProfile } from '@/lib/definitions';
+import { doc } from 'firebase/firestore';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
 
 const navItems = [
   { href: '/', label: 'Painel', icon: LayoutDashboard },
@@ -36,7 +41,6 @@ const navItems = [
   { href: '/accounts', label: 'Contas', icon: Landmark },
   { href: '/categories', label: 'Categorias', icon: Tags },
   { href: '/budgets', label: 'Orçamentos', icon: DollarSign },
-  { href: '/settings', label: 'Ajustes', icon: Settings },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -44,8 +48,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  const userDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, `users/${user.uid}`) : null),
+    [firestore, user]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+
 
   React.useEffect(() => {
     // Redirect to login if user is not loaded and not on an auth page
@@ -60,7 +72,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
-  if (isUserLoading || (!user && !isAuthPage)) {
+  if (isUserLoading || isProfileLoading || (!user && !isAuthPage)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader className="w-16 h-16 animate-spin text-primary" />
@@ -70,6 +82,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (isAuthPage) {
     return <>{children}</>;
+  }
+  
+  const getInitials = (name?: string) => {
+    if (!name) return '?';
+    const names = name.split(' ');
+    if (names.length > 1) {
+        return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return names[0].substring(0, 2).toUpperCase();
   }
 
 
@@ -100,6 +121,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+             <SidebarMenuItem>
+                <Link href="/settings">
+                    <SidebarMenuButton isActive={pathname === '/settings'} className="text-base">
+                        <Settings className="w-5 h-5" />
+                        <span>Ajustes</span>
+                    </SidebarMenuButton>
+                </Link>
+            </SidebarMenuItem>
             <SidebarMenuItem>
                 <SidebarMenuButton onClick={handleLogout} className="text-base">
                     <LogOut className="w-5 h-5" />
@@ -107,6 +136,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
             </SidebarMenuItem>
         </SidebarMenu>
+        <div className="p-4 border-t border-border mt-2">
+            <div className="flex items-center gap-3">
+                <Avatar>
+                    <AvatarFallback>{getInitials(userProfile?.name)}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="text-sm font-semibold">{userProfile?.name || 'Usuário'}</p>
+                    <p className="text-xs text-muted-foreground">{userProfile?.phoneNumber}</p>
+                </div>
+            </div>
+        </div>
       </SidebarFooter>
     </>
   );
