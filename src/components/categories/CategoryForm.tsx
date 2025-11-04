@@ -4,7 +4,8 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useActionState, useFormStatus } from 'react';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 
 import { useUser } from '@/firebase';
 import { saveCategory, type CategoryFormState } from '@/lib/actions/categories';
@@ -48,8 +49,9 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
   const isEditing = !!existingCategory;
 
   const initialState: CategoryFormState = { message: '', errors: {} };
+  const saveCategoryWithIds = saveCategory.bind(null, user?.uid || '', existingCategory?.id || null);
   const [state, dispatch] = useActionState(
-    saveCategory.bind(null, user?.uid || '', existingCategory?.id || null),
+    saveCategoryWithIds,
     initialState
   );
 
@@ -126,5 +128,3 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
     </Form>
   );
 }
-
-    

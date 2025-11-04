@@ -4,10 +4,11 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useActionState, useFormStatus } from 'react';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 
 import { useUser } from '@/firebase';
-import { saveAccount, type AccountFormState } from '@/lib/actions';
+import { saveAccount, type AccountFormState } from '@/lib/actions/accounts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -59,8 +60,9 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
   const isEditing = !!existingAccount;
 
   const initialState: AccountFormState = { message: '', errors: {} };
+  const saveAccountWithIds = saveAccount.bind(null, user?.uid || '', existingAccount?.id || null);
   const [state, dispatch] = useActionState(
-    saveAccount.bind(null, user?.uid || '', existingAccount?.id || null),
+    saveAccountWithIds,
     initialState
   );
 
