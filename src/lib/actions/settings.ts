@@ -1,19 +1,11 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { doc } from 'firebase/firestore';
-import { getSdks } from "@/firebase";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { firebaseConfig } from "@/firebase/config";
-
-function getserverFirestore() {
-    const apps = getApps();
-    const app = apps.length > 0 ? getApp() : initializeApp(firebaseConfig);
-    const { firestore } = getSdks(app);
-    return firestore;
-}
+import { getserverFirestore } from "@/lib/server/firebase";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Nome deve ter ao menos 2 caracteres."),

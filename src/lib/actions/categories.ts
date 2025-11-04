@@ -1,20 +1,11 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, doc } from 'firebase/firestore';
-import { getSdks } from "@/firebase";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { firebaseConfig } from "@/firebase/config";
-
-// Function to get the Firestore instance on the server
-function getserverFirestore() {
-    const apps = getApps();
-    const app = apps.length > 0 ? getApp() : initializeApp(firebaseConfig);
-    const { firestore } = getSdks(app);
-    return firestore;
-}
+import { getserverFirestore } from "@/lib/server/firebase";
 
 const categorySchema = z.object({
   name: z.string().min(1, "Nome da categoria é obrigatório."),
@@ -76,5 +67,3 @@ export async function deleteCategory(userId: string, categoryId: string) {
     revalidatePath("/categories");
     revalidatePath("/");
 }
-
-    
