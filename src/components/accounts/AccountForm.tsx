@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -58,6 +58,7 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
   const { user } = useUser();
   const { toast } = useToast();
   const isEditing = !!existingAccount;
+  const [isPending, startTransition] = useTransition();
 
   const initialState: AccountFormState = { message: '', errors: {} };
   const saveAccountWithIds = saveAccount.bind(null, user?.uid || '', existingAccount?.id || null);
@@ -107,7 +108,9 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     if (data.type === 'CartaoCredito' && data.limit) {
       formData.append('limit', data.limit);
     }
-    dispatch(formData);
+    startTransition(() => {
+        dispatch(formData);
+    });
   }
 
   return (
@@ -183,7 +186,9 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
             )}
           />
         )}
-        <SubmitButton isEditing={isEditing} />
+        <Button type="submit" disabled={isPending} className="w-full">
+            {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Conta'}
+        </Button>
       </form>
     </Form>
   );

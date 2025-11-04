@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useTransition } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
@@ -57,18 +57,10 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Salvando...' : 'Salvar Transação'}
-    </Button>
-  );
-}
-
 export function TransactionForm({ accounts, categories, onFormSubmit }: TransactionFormProps) {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
   
   const initialState: TransactionFormState = { message: "", errors: {} };
   const [state, dispatch] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
@@ -117,7 +109,9 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
     formData.append('category', data.category);
     formData.append('type', data.type);
     formData.append('installments', data.isRecurring ? data.installments || '1' : '1');
-    dispatch(formData);
+    startTransition(() => {
+        dispatch(formData);
+    });
   }
 
   if (isUserLoading) return <div>Carregando...</div>;
@@ -331,7 +325,9 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
             />
         )}
         
-        <SubmitButton />
+        <Button type="submit" disabled={isPending} className="w-full">
+            {isPending ? 'Salvando...' : 'Salvar Transação'}
+        </Button>
       </form>
     </Form>
   );

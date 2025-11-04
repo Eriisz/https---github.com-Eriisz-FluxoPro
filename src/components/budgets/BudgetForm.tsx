@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -38,15 +38,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function SubmitButton({ isEditing }: { isEditing: boolean }) {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Orçamento'}
-    </Button>
-  );
-}
-
 interface BudgetFormProps {
   existingBudget?: Budget;
   onFormSubmit: () => void;
@@ -57,6 +48,7 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
   const { user } = useUser();
   const { toast } = useToast();
   const isEditing = !!existingBudget;
+  const [isPending, startTransition] = useTransition();
 
   const initialState: BudgetFormState = { message: '', errors: {} };
   const saveBudgetWithIds = saveBudget.bind(null, user?.uid || '', existingBudget?.id || null);
@@ -98,7 +90,9 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
     formData.append('categoryId', data.categoryId);
     formData.append('limit', data.limit);
     formData.append('month', data.month);
-    dispatch(formData);
+    startTransition(() => {
+        dispatch(formData);
+    });
   }
 
   return (
@@ -155,7 +149,9 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
             </FormItem>
           )}
         />
-        <SubmitButton isEditing={isEditing} />
+        <Button type="submit" disabled={isPending} className="w-full">
+            {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Orçamento'}
+        </Button>
       </form>
     </Form>
   );

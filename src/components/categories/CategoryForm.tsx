@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -29,15 +29,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function SubmitButton({ isEditing }: { isEditing: boolean }) {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Categoria'}
-    </Button>
-  );
-}
-
 interface CategoryFormProps {
   existingCategory?: Category;
   onFormSubmit: () => void;
@@ -47,6 +38,7 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
   const { user } = useUser();
   const { toast } = useToast();
   const isEditing = !!existingCategory;
+  const [isPending, startTransition] = useTransition();
 
   const initialState: CategoryFormState = { message: '', errors: {} };
   const saveCategoryWithIds = saveCategory.bind(null, user?.uid || '', existingCategory?.id || null);
@@ -86,7 +78,9 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
     const formData = new FormData();
     formData.append('name', data.name);
     formData.append('color', data.color);
-    dispatch(formData);
+    startTransition(() => {
+        dispatch(formData);
+    });
   }
 
   return (
@@ -123,7 +117,9 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
             </FormItem>
           )}
         />
-        <SubmitButton isEditing={isEditing} />
+        <Button type="submit" disabled={isPending} className="w-full">
+            {isPending ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Categoria'}
+        </Button>
       </form>
     </Form>
   );

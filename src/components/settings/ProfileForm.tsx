@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -28,15 +28,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? 'Salvando...' : 'Salvar Alterações'}
-    </Button>
-  );
-}
-
 interface ProfileFormProps {
   userProfile?: UserProfile | null;
 }
@@ -44,6 +35,7 @@ interface ProfileFormProps {
 export function ProfileForm({ userProfile }: ProfileFormProps) {
   const { user } = useUser();
   const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
 
   const initialState: ProfileFormState = { message: '', errors: {} };
   const saveProfileWithId = saveProfile.bind(null, user?.uid || '');
@@ -85,7 +77,9 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
   function onSubmit(data: FormValues) {
     const formData = new FormData();
     formData.append('name', data.name);
-    dispatch(formData);
+    startTransition(() => {
+        dispatch(formData);
+    });
   }
 
   return (
@@ -113,7 +107,9 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
                 O número de celular é usado para login e não pode ser alterado.
             </p>
         </FormItem>
-        <SubmitButton />
+        <Button type="submit" disabled={isPending}>
+            {isPending ? 'Salvando...' : 'Salvar Alterações'}
+        </Button>
       </form>
     </Form>
   );
