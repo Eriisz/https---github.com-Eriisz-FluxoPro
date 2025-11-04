@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { addTransaction, type TransactionFormState } from '@/app/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -35,7 +34,7 @@ import { Calculator } from '@/components/shared/Calculator';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Account, Category } from '@/lib/definitions';
+import type { Account, Category, Transaction } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { addMonths } from 'date-fns';
@@ -118,25 +117,29 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
         }
         
         const installments = data.isRecurring ? parseInt(data.installments || '1', 10) : 1;
-        const groupId = installments > 1 ? crypto.randomUUID() : undefined;
         const value = parseFloat(data.value.replace(',', '.'));
+        const groupId = installments > 1 ? crypto.randomUUID() : undefined;
+
 
         for (let i = 0; i < installments; i++) {
             const transactionDate = addMonths(data.date, i);
             const transactionValue = data.type === 'expense' ? -value : value;
             
-            const newTransaction = {
+            const newTransaction: Omit<Transaction, 'id'> = {
                 userId: user.uid,
                 description: data.description,
                 value: transactionValue,
                 date: transactionDate.toISOString(),
                 account: data.account,
                 category: data.category || '',
-                categoryId: categoryId,
+                categoryId: categoryId || '',
                 type: data.type,
-                groupId,
-                installments: installments > 1 ? { current: i + 1, total: installments } : undefined,
             };
+
+            if (groupId) {
+              newTransaction.groupId = groupId;
+              newTransaction.installments = { current: i + 1, total: installments };
+            }
             
             addDocumentNonBlocking(transactionsCol, newTransaction);
         }
@@ -387,7 +390,3 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     </>
   );
 }
-
-    
-
-    
