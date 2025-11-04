@@ -29,6 +29,7 @@ export type Category = {
   userId: string;
   name: string;
   color: string;
+  type: 'income' | 'expense';
 };
 
 export type Budget = {

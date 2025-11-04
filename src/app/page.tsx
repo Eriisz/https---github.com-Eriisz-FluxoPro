@@ -72,7 +72,7 @@ export default function DashboardPage() {
     const totalBudget = (budgets || []).reduce((acc, b) => acc + b.limit, 0);
     
     const categorySpending = (categories || [])
-      .filter(c => c.name !== 'Receita')
+      .filter(c => c.type === 'expense')
       .map(category => {
           const total = transactions
               .filter(t => t.category === category.name && t.type === 'expense')

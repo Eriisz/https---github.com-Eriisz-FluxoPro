@@ -74,7 +74,7 @@ export default function BudgetsPage() {
         isOpen={dialogOpen}
         onOpenChange={setDialogOpen}
         budget={selectedBudget}
-        categories={categories?.filter(c => c.name !== 'Receita') || []}
+        categories={categories || []}
       />
     </div>
   );

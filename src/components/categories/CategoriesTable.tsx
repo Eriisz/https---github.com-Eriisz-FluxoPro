@@ -63,6 +63,11 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
       setCategoryToDelete(null);
     }
   };
+  
+  const typeLabels: {[key: string]: string} = {
+    'income': 'Receita',
+    'expense': 'Despesa'
+  }
 
   return (
     <>
@@ -71,6 +76,7 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Cor</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -80,6 +86,11 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
               categories.map((category) => (
                 <TableRow key={category.id}>
                   <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell>
+                    <Badge variant={category.type === 'income' ? 'default': 'secondary'}>
+                        {typeLabels[category.type]}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: category.color }} />
@@ -114,7 +125,7 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   Nenhuma categoria encontrada.
                 </TableCell>
               </TableRow>

@@ -134,13 +134,19 @@
         "color": {
           "type": "string",
           "description": "The color associated with the category in hex format (e.g., #FF0000)."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense"],
+          "description": "The type of transaction this category applies to."
         }
       },
       "required": [
         "id",
         "userId",
         "name",
-        "color"
+        "color",
+        "type"
       ]
     },
     "CategoryColor": {

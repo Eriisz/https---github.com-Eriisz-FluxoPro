@@ -85,6 +85,8 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
     onFormSubmit();
     form.reset();
   }
+  
+  const expenseCategories = categories.filter(c => c.type === 'expense');
 
   return (
     <Form {...form}>
@@ -115,7 +117,7 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {categories.map((category) => (
+                  {expenseCategories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
                     </SelectItem>

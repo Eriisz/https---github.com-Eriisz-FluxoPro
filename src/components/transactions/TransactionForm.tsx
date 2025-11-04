@@ -118,10 +118,7 @@ export function TransactionForm({ accounts, categories, onFormSubmit }: Transact
   }
 
   const filteredCategories = React.useMemo(() => {
-    if (transactionType === 'income') {
-        return categories.filter(c => c.name === 'Receita' || c.name === 'Salário' || c.name === 'Investimentos' || c.name === 'Outras Receitas' || c.name === 'Freelance');
-    }
-    return categories.filter(c => c.name !== 'Receita' && c.name !== 'Salário' && c.name !== 'Investimentos' && c.name !== 'Outras Receitas' && c.name !== 'Freelance');
+    return categories.filter(c => c.type === transactionType);
   }, [categories, transactionType]);
 
 

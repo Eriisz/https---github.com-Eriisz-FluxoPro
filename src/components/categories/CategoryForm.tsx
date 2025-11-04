@@ -20,10 +20,12 @@ import { useToast } from '@/hooks/use-toast';
 import type { Category } from '@/lib/definitions';
 import { doc, collection } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
   color: z.string().regex(/^#[0-9A-F]{6}$/i, { message: 'Cor inválida. Use o formato #RRGGBB.' }),
+  type: z.enum(['income', 'expense'], { required_error: 'Selecione o tipo.' }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -44,6 +46,7 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
     defaultValues: {
       name: existingCategory?.name || '',
       color: existingCategory?.color || '#A9A9A9',
+      type: existingCategory?.type || 'expense',
     },
   });
 
@@ -61,6 +64,7 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
         userId: user.uid,
         name: data.name,
         color: data.color,
+        type: data.type,
     };
 
     setDocumentNonBlocking(categoryRef, categoryData, { merge: true });
@@ -104,6 +108,37 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
                         <Input placeholder="#RRGGBB" {...field} />
                     </FormControl>
                 </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="type"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Tipo</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex space-x-4"
+                  disabled={existingCategory?.name === 'Receita'}
+                >
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="expense" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Despesa</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="income" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Receita</FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
