@@ -50,4 +50,10 @@ export async function saveProfile(userId: string, prevState: ProfileFormState, f
         name: data.name,
     };
     
-    setDocumentNonBlocking(userRef, profile
+    setDocumentNonBlocking(userRef, profileData, { merge: true });
+
+    revalidatePath("/settings");
+    revalidatePath("/"); // To update sidebar with new name
+    
+    return { message: "Perfil atualizado com sucesso!" };
+}
