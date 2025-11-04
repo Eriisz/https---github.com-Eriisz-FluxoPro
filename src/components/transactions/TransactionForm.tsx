@@ -45,15 +45,23 @@ interface TransactionFormProps {
 }
 
 const formSchema = z.object({
-  description: z.string().min(2, { message: "Descrição precisa ter ao menos 2 caracteres." }),
-  value: z.string().refine(val => !isNaN(parseFloat(val.replace(',', '.'))), { message: "Valor inválido." }),
-  date: z.date(),
-  account: z.string().min(1, { message: "Selecione uma conta." }),
-  category: z.string().min(1, { message: "Selecione uma categoria." }),
-  type: z.enum(['income', 'expense'], { required_error: "Selecione o tipo." }),
-  isRecurring: z.boolean().default(false),
-  installments: z.string().optional(),
-});
+    description: z.string().min(2, { message: "Descrição precisa ter ao menos 2 caracteres." }),
+    value: z.string().refine(val => !isNaN(parseFloat(val.replace(',', '.'))), { message: "Valor inválido." }),
+    date: z.date(),
+    account: z.string().min(1, { message: "Selecione uma conta." }),
+    category: z.string().min(1, { message: "Selecione uma categoria." }),
+    type: z.enum(['income', 'expense'], { required_error: "Selecione o tipo." }),
+    isRecurring: z.boolean().default(false),
+    installments: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (data.type === 'expense' && !data.category) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['category'],
+            message: "Selecione uma categoria.",
+        });
+    }
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 
