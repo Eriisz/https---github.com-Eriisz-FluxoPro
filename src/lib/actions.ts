@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { addMonths } from "date-fns";
+import { addMonths, format } from "date-fns";
 import { checkBudgetAndAlert } from "@/ai/flows/budgeting-alerts";
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -19,10 +19,10 @@ function getserverFirestore() {
 }
 
 
-async function getBudgetForCategory(userId: string, category: string): Promise<number> {
+async function getBudgetForCategory(userId: string, categoryId: string, month: string): Promise<number> {
     const db = getserverFirestore();
     const budgetsCol = collection(db, `users/${userId}/budgets`);
-    const q = query(budgetsCol, where("category", "==", category));
+    const q = query(budgetsCol, where("categoryId", "==", categoryId), where("month", "==", month));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
         // Assuming one budget per category for simplicity
@@ -85,6 +85,13 @@ export async function addTransaction(
   const db = getserverFirestore();
   const transactionsCol = collection(db, `users/${userId}/transactions`);
 
+  // Find category ID from name
+  const categoriesCol = collection(db, `users/${userId}/categories`);
+  const catQuery = query(categoriesCol, where("name", "==", data.category));
+  const catSnapshot = await getDocs(catQuery);
+  const categoryId = catSnapshot.empty ? null : catSnapshot.docs[0].id;
+
+
   for (let i = 0; i < data.installments; i++) {
     const transactionDate = addMonths(data.date, i);
     const transactionValue = data.type === 'expense' ? -data.value : data.value;
@@ -96,7 +103,8 @@ export async function addTransaction(
       value: transactionValue,
       date: transactionDate.toISOString(),
       account: data.account,
-      category: data.category,
+      category: data.category, // Storing name for display
+      categoryId: categoryId, // Storing ID for reference
       type: data.type,
       groupId,
       installments: data.installments > 1 ? { current: i + 1, total: data.installments } : undefined,
@@ -106,8 +114,9 @@ export async function addTransaction(
   }
   
   // Verifica o orçamento para despesas
-  if (data.type === 'expense') {
-      const budgetValue = await getBudgetForCategory(userId, data.category);
+  if (data.type === 'expense' && categoryId) {
+      const monthStr = format(data.date, 'yyyy-MM');
+      const budgetValue = await getBudgetForCategory(userId, categoryId, monthStr);
       if (budgetValue > 0) {
           const result = await checkBudgetAndAlert({
               userId,

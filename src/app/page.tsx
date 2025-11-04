@@ -4,11 +4,11 @@ import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
-import type { Transaction, Category, Account } from "@/lib/definitions";
+import type { Transaction, Category, Account, Budget } from "@/lib/definitions";
 import { useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, format } from 'date-fns';
 
 
 export default function DashboardPage() {
@@ -21,6 +21,7 @@ export default function DashboardPage() {
     user ? collection(firestore, `users/${user.uid}/categories`) : null, [firestore, user]);
 
   const now = new Date();
+  const currentMonthStr = format(now, 'yyyy-MM');
   const oneMonthAgo = startOfMonth(now);
   
   const currentMonthTransactionsQuery = useMemoFirebase(() =>
@@ -45,12 +46,20 @@ export default function DashboardPage() {
       limit(5)
     ) : null, [firestore, user]
   );
+  
+  const budgetsQuery = useMemoFirebase(() =>
+    user ? query(
+      collection(firestore, `users/${user.uid}/budgets`),
+      where('month', '==', currentMonthStr)
+    ) : null,
+  [firestore, user, currentMonthStr]);
 
   const { data: accounts, isLoading: loadingAccounts } = useCollection<Account>(accountsQuery);
   const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
   const { data: currentMonthTransactions, isLoading: loadingCurrentMonthTransactions } = useCollection<Transaction>(currentMonthTransactionsQuery);
   const { data: allTransactions, isLoading: loadingAllTransactions } = useCollection<Transaction>(allTransactionsQuery);
   const { data: recentTransactionsData, isLoading: loadingRecent } = useCollection<Transaction>(recentTransactionsQuery);
+  const { data: budgets, isLoading: loadingBudgets } = useCollection<Budget>(budgetsQuery);
 
 
   const getDashboardData = () => {
@@ -59,6 +68,8 @@ export default function DashboardPage() {
     const balance = (allTransactions || []).reduce((acc, t) => acc + t.value, 0);
     const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.value, 0);
     const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.value, 0);
+
+    const totalBudget = (budgets || []).reduce((acc, b) => acc + b.limit, 0);
     
     const categorySpending = (categories || [])
       .filter(c => c.name !== 'Receita')
@@ -99,7 +110,7 @@ export default function DashboardPage() {
       balance,
       income,
       expenses,
-      totalBudget: 2500, // TODO: Replace with real budget data
+      totalBudget: totalBudget,
       spentThisMonth: Math.abs(expenses),
       categorySpending,
       monthlyFlow: monthlyFlow.map(d => ({ ...d, expenses: Math.abs(d.expenses) })),
@@ -108,7 +119,7 @@ export default function DashboardPage() {
   }
 
   const data = getDashboardData();
-  const isLoading = loadingAccounts || loadingCategories || loadingCurrentMonthTransactions || loadingRecent || loadingAllTransactions;
+  const isLoading = loadingAccounts || loadingCategories || loadingCurrentMonthTransactions || loadingRecent || loadingAllTransactions || loadingBudgets;
   
   if (isLoading) {
       return <div>Carregando dados...</div>

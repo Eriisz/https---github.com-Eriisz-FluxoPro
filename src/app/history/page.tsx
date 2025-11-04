@@ -42,8 +42,8 @@ export default function HistoryPage() {
 
   const getHistoryData = () => {
     const enrichedTransactions = (transactions || []).map(t => {
-      const category = (categories || []).find(c => c.name === t.category);
-      return { ...t, categoryColor: category?.color || '#A9A9A9' };
+      const category = (categories || []).find(c => c.id === t.categoryId);
+      return { ...t, categoryColor: category?.color || '#A9A9A9', categoryName: category?.name || t.category };
     });
     return { transactions: enrichedTransactions };
   }
@@ -94,7 +94,7 @@ export default function HistoryPage() {
                       className="text-white"
                       style={{ backgroundColor: transaction.categoryColor }}
                     >
-                      {transaction.category}
+                      {transaction.categoryName}
                     </Badge>
                   </TableCell>
                   <TableCell>{transaction.account}</TableCell>

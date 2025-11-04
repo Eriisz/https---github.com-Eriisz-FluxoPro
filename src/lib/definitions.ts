@@ -3,7 +3,8 @@ export type Transaction = {
   userId: string;
   value: number;
   date: string; // ISO string
-  category: string;
+  category: string; // Name of the category for display
+  categoryId: string; // ID of the category for relations
   account: string;
   description: string;
   groupId?: string;
@@ -18,7 +19,7 @@ export type Account = {
   id: string;
   userId: string;
   name: string;
-  type: 'ContaCorrente' | 'CartaoCredito' | 'Investimento';
+  type: 'ContaCorrente' | 'CartaoCredito' | 'Investimento' | 'Outro';
   balance: number;
   limit?: number;
 };
@@ -33,7 +34,7 @@ export type Category = {
 export type Budget = {
   id: string;
   userId: string;
-  category: string;
+  categoryId: string;
   limit: number;
   month: string; // YYYY-MM
 };
