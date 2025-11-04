@@ -68,7 +68,9 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   
   const initialState: TransactionFormState = { message: "", errors: {} };
-  const [state, dispatch, isPending] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
+  const [state, dispatch] = useActionState(addTransaction.bind(null, user?.uid || ''), initialState);
+  const [isPending, startTransition] = useTransition();
+
 
   const categoriesQuery = useMemoFirebase(
     () => (user ? collection(firestore, `users/${user.uid}/categories`) : null),
@@ -122,7 +124,9 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     if(data.category) formData.append('category', data.category);
     formData.append('type', data.type);
     formData.append('installments', data.isRecurring ? data.installments || '1' : '1');
-    dispatch(formData);
+    startTransition(() => {
+      dispatch(formData);
+    });
   }
 
   const filteredCategories = React.useMemo(() => {
@@ -351,3 +355,5 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     </>
   );
 }
+
+    
