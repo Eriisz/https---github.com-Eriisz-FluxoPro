@@ -31,7 +31,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface CategoryFormProps {
-  existingCategory?: Category;
+  existingCategory?: Partial<Category>;
   onFormSubmit: () => void;
 }
 
@@ -39,7 +39,7 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const isEditing = !!existingCategory;
+  const isEditing = !!existingCategory?.id;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

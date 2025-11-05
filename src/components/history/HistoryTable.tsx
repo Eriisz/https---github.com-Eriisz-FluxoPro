@@ -34,6 +34,7 @@ import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Badge } from '../ui/badge';
 import { formatCurrency } from '@/lib/utils';
+import { isPast, startOfToday } from 'date-fns';
 
 interface HistoryTableProps {
   transactions: (Transaction & { categoryName: string, categoryColor: string, accountName: string })[];
@@ -65,6 +66,34 @@ export function HistoryTable({ transactions, onEdit }: HistoryTableProps) {
     }
   };
 
+  const getTransactionStatus = (transaction: Transaction) => {
+    if (transaction.status === 'PENDING' && isPast(new Date(transaction.date)) && new Date(transaction.date) < startOfToday()) {
+        return 'LATE';
+    }
+    return transaction.status;
+  }
+
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' => {
+    switch(status) {
+        case 'PAID':
+        case 'RECEIVED':
+            return 'default';
+        case 'LATE':
+            return 'destructive';
+        case 'PENDING':
+        default:
+            return 'secondary';
+    }
+  }
+  
+  const statusLabels: {[key: string]: string} = {
+    PAID: 'Pago',
+    PENDING: 'Pendente',
+    RECEIVED: 'Recebido',
+    LATE: 'Atrasado',
+  };
+
+
   return (
     <>
         <Table>
@@ -80,63 +109,66 @@ export function HistoryTable({ transactions, onEdit }: HistoryTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {transaction.type === 'income' ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-destructive" />}
-                      <span className="font-medium">{transaction.description}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className="text-white"
-                      style={{ backgroundColor: transaction.categoryColor }}
-                    >
-                      {transaction.categoryName}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{transaction.accountName}</TableCell>
-                  <TableCell>
-                    {new Date(transaction.date).toLocaleDateString("pt-BR", {timeZone: 'UTC'})}
-                  </TableCell>
-                  <TableCell>
-                      <Badge variant={transaction.status === 'PAID' || transaction.status === 'RECEIVED' ? 'default' : 'secondary'}>{transaction.status}</Badge>
-                  </TableCell>
-                  <TableCell
-                    className={`text-right font-medium ${
-                      transaction.type === "income"
-                        ? "text-primary"
-                        : "text-destructive"
-                    }`}
-                  >
-                    {formatCurrency(transaction.value)}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(transaction)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => handleDeleteClick(transaction)}
+              {transactions.map((transaction) => {
+                const status = getTransactionStatus(transaction);
+                return (
+                    <TableRow key={transaction.id}>
+                    <TableCell>
+                        <div className="flex items-center gap-3">
+                        {transaction.type === 'income' ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-destructive" />}
+                        <span className="font-medium">{transaction.description}</span>
+                        </div>
+                    </TableCell>
+                    <TableCell>
+                        <Badge
+                        className="text-white"
+                        style={{ backgroundColor: transaction.categoryColor }}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Deletar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        {transaction.categoryName}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>{transaction.accountName}</TableCell>
+                    <TableCell>
+                        {new Date(transaction.date).toLocaleDateString("pt-BR", {timeZone: 'UTC'})}
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant={getStatusVariant(status)}>{statusLabels[status]}</Badge>
+                    </TableCell>
+                    <TableCell
+                        className={`text-right font-medium ${
+                        transaction.type === "income"
+                            ? "text-primary"
+                            : "text-destructive"
+                        }`}
+                    >
+                        {formatCurrency(transaction.value)}
+                    </TableCell>
+                    <TableCell>
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEdit(transaction)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteClick(transaction)}
+                            >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Deletar
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                    </TableRow>
+                )
+            })}
             </TableBody>
           </Table>
 

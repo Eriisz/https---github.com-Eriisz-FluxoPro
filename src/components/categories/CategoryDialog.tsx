@@ -14,7 +14,7 @@ import { CategoryForm } from './CategoryForm';
 interface CategoryDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  category?: Category;
+  category?: Partial<Category>;
 }
 
 export function CategoryDialog({ isOpen, onOpenChange, category }: CategoryDialogProps) {
@@ -26,9 +26,9 @@ export function CategoryDialog({ isOpen, onOpenChange, category }: CategoryDialo
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{category ? 'Editar Categoria' : 'Adicionar Nova Categoria'}</DialogTitle>
+          <DialogTitle>{category && category.id ? 'Editar Categoria' : 'Adicionar Nova Categoria'}</DialogTitle>
           <DialogDescription>
-            {category ? 'Atualize os detalhes da sua categoria.' : 'Preencha os detalhes da nova categoria.'}
+            {category && category.id ? 'Atualize os detalhes da sua categoria.' : 'Preencha os detalhes da nova categoria.'}
           </DialogDescription>
         </DialogHeader>
         <CategoryForm existingCategory={category} onFormSubmit={handleFormSubmit} />
@@ -36,5 +36,3 @@ export function CategoryDialog({ isOpen, onOpenChange, category }: CategoryDialo
     </Dialog>
   );
 }
-
-    
