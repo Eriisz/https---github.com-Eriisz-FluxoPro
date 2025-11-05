@@ -167,7 +167,6 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
             const updatedTransactionData: Partial<Omit<Transaction, 'id' | 'installments' | 'groupId'>> = {
                 description: data.description,
                 value: transactionValue,
-                date: data.date.toISOString(),
                 accountId: data.accountId,
                 categoryId: data.categoryId || '',
                 type: data.type,
@@ -401,9 +400,11 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                     ))}
                   </SelectContent>
                 </Select>
-                <Button type="button" variant="ghost" size="icon" onClick={() => setCategoryDialogOpen(true)}>
-                    <PlusCircle className="h-4 w-4"/>
-                </Button>
+                {transactionType === 'expense' && (
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setCategoryDialogOpen(true)}>
+                      <PlusCircle className="h-4 w-4"/>
+                  </Button>
+                )}
                 </div>
                 <FormMessage />
               </FormItem>
@@ -568,7 +569,3 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     </>
   );
 }
-
-    
-
-    

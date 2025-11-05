@@ -8,7 +8,7 @@ export type Transaction = {
   account: string; // Name of the account for display
   accountId: string; // ID of the account for relations
   description: string;
-  groupId?: string;
+  groupId?: string | null;
   installments?: {
     current: number;
     total: number;
