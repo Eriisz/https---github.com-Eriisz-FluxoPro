@@ -37,9 +37,17 @@ export type Category = {
 export type Budget = {
   id: string;
   userId: string;
-  categoryId: string;
   limit: number;
   month: string; // YYYY-MM
+};
+
+export type Goal = {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string; // ISO string
 };
 
 export type User = {

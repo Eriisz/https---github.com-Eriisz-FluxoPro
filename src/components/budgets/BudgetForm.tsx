@@ -17,20 +17,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Budget, Category } from '@/lib/definitions';
+import type { Budget } from '@/lib/definitions';
 import { doc, collection } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
-  categoryId: z.string().min(1, 'Selecione uma categoria.'),
   limit: z.string().min(1, 'Limite é obrigatório.'),
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Mês deve estar no formato AAAA-MM.'),
 });
@@ -40,10 +32,9 @@ type FormValues = z.infer<typeof formSchema>;
 interface BudgetFormProps {
   existingBudget?: Budget;
   onFormSubmit: () => void;
-  categories: Category[];
 }
 
-export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetFormProps) {
+export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -52,7 +43,6 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      categoryId: existingBudget?.categoryId || '',
       limit: String(existingBudget?.limit || ''),
       month: existingBudget?.month || format(new Date(), 'yyyy-MM'),
     },
@@ -70,7 +60,6 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
     const budgetData = {
       id,
       userId: user.uid,
-      categoryId: data.categoryId,
       limit: parseFloat(data.limit.replace(',', '.')),
       month: data.month,
     };
@@ -85,8 +74,6 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
     onFormSubmit();
     form.reset();
   }
-  
-  const expenseCategories = categories.filter(c => c.type === 'expense');
 
   return (
     <Form {...form}>
@@ -106,37 +93,12 @@ export function BudgetForm({ existingBudget, onFormSubmit, categories }: BudgetF
         />
         <FormField
           control={form.control}
-          name="categoryId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categoria</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {expenseCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
           name="limit"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Limite de Gasto (R$)</FormLabel>
+              <FormLabel>Limite de Gasto Total (R$)</FormLabel>
               <FormControl>
-                <Input type="text" placeholder="500,00" {...field} />
+                <Input type="text" placeholder="5000,00" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

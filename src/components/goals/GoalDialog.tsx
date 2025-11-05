@@ -8,16 +8,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { Budget } from '@/lib/definitions';
-import { BudgetForm } from './BudgetForm';
+import type { Goal } from '@/lib/definitions';
+import { GoalForm } from './GoalForm';
 
-interface BudgetDialogProps {
+interface GoalDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  budget?: Budget;
+  goal?: Goal;
 }
 
-export function BudgetDialog({ isOpen, onOpenChange, budget }: BudgetDialogProps) {
+export function GoalDialog({ isOpen, onOpenChange, goal }: GoalDialogProps) {
   const handleFormSubmit = () => {
     onOpenChange(false);
   };
@@ -26,13 +26,13 @@ export function BudgetDialog({ isOpen, onOpenChange, budget }: BudgetDialogProps
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{budget ? 'Editar Orçamento' : 'Adicionar Novo Orçamento'}</DialogTitle>
+          <DialogTitle>{goal ? 'Editar Meta' : 'Adicionar Nova Meta'}</DialogTitle>
           <DialogDescription>
-            {budget ? 'Atualize os detalhes do seu orçamento.' : 'Preencha os detalhes do novo orçamento.'}
+            {goal ? 'Atualize os detalhes da sua meta.' : 'Preencha os detalhes da nova meta de economia.'}
           </DialogDescription>
         </DialogHeader>
-        <BudgetForm 
-            existingBudget={budget} 
+        <GoalForm 
+            existingGoal={goal} 
             onFormSubmit={handleFormSubmit}
         />
       </DialogContent>

@@ -31,14 +31,13 @@ import type { Budget } from '@/lib/definitions';
 import { formatCurrency } from '@/lib/utils';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '../ui/badge';
 import { format, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface BudgetsTableProps {
-  budgets: (Budget & { categoryName: string, categoryColor: string })[];
+  budgets: Budget[];
   onEdit: (budget: Budget) => void;
 }
 
@@ -47,7 +46,7 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
-  const [budgetToDelete, setBudgetToDelete] = React.useState<Budget & {categoryName?: string} | null>(null);
+  const [budgetToDelete, setBudgetToDelete] = React.useState<Budget | null>(null);
 
   const handleDeleteClick = (budget: Budget) => {
     setBudgetToDelete(budget);
@@ -83,7 +82,6 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Mês</TableHead>
-              <TableHead>Categoria</TableHead>
               <TableHead className="text-right">Limite</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -93,14 +91,6 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
               budgets.map((budget) => (
                 <TableRow key={budget.id}>
                   <TableCell className="font-medium capitalize">{formatMonth(budget.month)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      className="text-white"
-                      style={{ backgroundColor: budget.categoryColor }}
-                    >
-                      {budget.categoryName}
-                    </Badge>
-                  </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(budget.limit)}
                   </TableCell>
@@ -131,7 +121,7 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={3} className="h-24 text-center">
                   Nenhum orçamento encontrado.
                 </TableCell>
               </TableRow>
@@ -146,7 +136,7 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta ação não pode ser desfeita. Isso irá deletar permanentemente o orçamento para {' '}
-              <strong>{budgetToDelete?.categoryName}</strong> em <strong>{budgetToDelete ? formatMonth(budgetToDelete.month) : ''}</strong>.
+              <strong>{budgetToDelete ? formatMonth(budgetToDelete.month) : ''}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -24,7 +24,7 @@ import {
   Menu,
   LogOut,
   Loader,
-  User as UserIcon,
+  Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -42,6 +42,7 @@ const navItems = [
   { href: '/accounts', label: 'Contas', icon: Landmark },
   { href: '/categories', label: 'Categorias', icon: Tags },
   { href: '/budgets', label: 'Orçamentos', icon: DollarSign },
+  { href: '/goals', label: 'Metas', icon: Target },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

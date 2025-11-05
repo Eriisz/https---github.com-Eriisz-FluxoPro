@@ -163,36 +163,11 @@
         "type"
       ]
     },
-    "CategoryColor": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "CategoryColor",
-      "type": "object",
-      "description": "Maps a color to a category for visualization purposes.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the CategoryColor entity."
-        },
-        "categoryId": {
-          "type": "string",
-          "description": "Reference to Category. (Relationship: Category 1:1 CategoryColor)"
-        },
-        "color": {
-          "type": "string",
-          "description": "The color associated with the category (e.g., #FF0000)."
-        }
-      },
-      "required": [
-        "id",
-        "categoryId",
-        "color"
-      ]
-    },
     "Budget": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Budget",
       "type": "object",
-      "description": "Represents a monthly budget for a specific category.",
+      "description": "Represents a monthly budget.",
       "properties": {
         "id": {
           "type": "string",
@@ -202,13 +177,9 @@
           "type": "string",
           "description": "Reference to User. (Relationship: User 1:N Budget)"
         },
-        "categoryId": {
-          "type": "string",
-          "description": "Reference to Category. (Relationship: Category 1:N Budget)"
-        },
         "limit": {
           "type": "number",
-          "description": "The monthly budget limit for the category."
+          "description": "The monthly budget limit."
         },
         "month": {
           "type": "string",
@@ -219,9 +190,49 @@
       "required": [
         "id",
         "userId",
-        "categoryId",
         "limit",
         "month"
+      ]
+    },
+    "Goal": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Goal",
+      "type": "object",
+      "description": "Represents a user's savings goal.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Goal entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Goal)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the goal."
+        },
+        "targetAmount": {
+          "type": "number",
+          "description": "The target amount to save for the goal."
+        },
+        "currentAmount": {
+          "type": "number",
+          "description": "The current amount saved towards the goal."
+        },
+        "targetDate": {
+          "type": "string",
+          "description": "The target date to achieve the goal.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "targetAmount",
+        "currentAmount",
+        "targetDate"
       ]
     }
   },
@@ -290,26 +301,6 @@
         }
       },
       {
-        "path": "/users/{userId}/category_colors/{categoryColorId}",
-        "definition": {
-          "entityName": "CategoryColor",
-          "schema": {
-            "$ref": "#/backend/entities/CategoryColor"
-          },
-          "description": "Stores category color mappings. Path-based ownership ensures only the user can access their category color mappings.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The Firebase Auth UID of the user."
-            },
-            {
-              "name": "categoryColorId",
-              "description": "The unique ID of the category color mapping."
-            }
-          ]
-        }
-      },
-      {
         "path": "/users/{userId}/budgets/{budgetId}",
         "definition": {
           "entityName": "Budget",
@@ -348,9 +339,28 @@
             }
           ]
         }
+      },
+      {
+        "path": "/users/{userId}/goals/{goalId}",
+        "definition": {
+          "entityName": "Goal",
+          "schema": {
+            "$ref": "#/backend/entities/Goal"
+          },
+          "description": "Stores user savings goals. Path-based ownership ensures only the user can access their goals.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Auth UID of the user."
+            },
+            {
+              "name": "goalId",
+              "description": "The unique ID of the goal."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore data structure is designed to manage personal finances with a focus on automation, visualization, and user customization. It prioritizes authorization independence by using path-based ownership for user-specific data. This eliminates the need for `get()` calls in security rules, allowing for atomic operations and easier debugging.\n\n*   **Users Collection:** Stores user profiles with `phoneNumber` and `createdAt` fields. The `id` is automatically generated by Firebase Authentication.\n*   **User-Owned Data:** Accounts, Categories, CategoryColors, Budgets, and Transactions are stored as subcollections under the `/users/{userId}` path. This ensures that only the authenticated user can access their own data. The User ID is stored in localStorage on the client side for immediate use after login, removing any latency in obtaining the Auth ID.\n*   **Authorization Independence:** All data is stored under the user's document (`/users/{userId}`). This means that access control can be enforced using path-based rules, without needing to read any data from parent documents. For example, to secure the `transactions` collection, the rule would simply check if `request.auth.uid == userId`.\n*   **Homogeneous Security Posture:** The use of subcollections guarantees that all documents within a collection have the same security requirements (e.g., all documents in `/users/{userId}/transactions` can only be accessed by the user with ID `userId`).\n*   **Support for QAPs:**\n    *   List operations are secured by path-based rules ensuring that a user can only list data under their own user ID.\n    *   The consistent use of path-based ownership and the elimination of `get()` calls in security rules contribute to a robust and secure data access model.\n\nThis structure facilitates clear and concise security rules, enhances maintainability, and provides a solid foundation for building a feature-rich financial management application."
+    "reasoning": "The Firestore data structure is designed to manage personal finances with a focus on automation, visualization, and user customization. It prioritizes authorization independence by using path-based ownership for user-specific data. This eliminates the need for `get()` calls in security rules, allowing for atomic operations and easier debugging.\n\n*   **Users Collection:** Stores user profiles with `phoneNumber` and `createdAt` fields. The `id` is automatically generated by Firebase Authentication.\n*   **User-Owned Data:** Accounts, Categories, Goals, Budgets, and Transactions are stored as subcollections under the `/users/{userId}` path. This ensures that only the authenticated user can access their own data. The User ID is stored in localStorage on the client side for immediate use after login, removing any latency in obtaining the Auth ID.\n*   **Authorization Independence:** All data is stored under the user's document (`/users/{userId}`). This means that access control can be enforced using path-based rules, without needing to read any data from parent documents. For example, to secure the `transactions` collection, the rule would simply check if `request.auth.uid == userId`.\n*   **Homogeneous Security Posture:** The use of subcollections guarantees that all documents within a collection have the same security requirements (e.g., all documents in `/users/{userId}/transactions` can only be accessed by the user with ID `userId`).\n*   **Support for QAPs:**\n    *   List operations are secured by path-based rules ensuring that a user can only list data under their own user ID.\n    *   The consistent use of path-based ownership and the elimination of `get()` calls in security rules contribute to a robust and secure data access model.\n\nThis structure facilitates clear and concise security rules, enhances maintainability, and provides a solid foundation for building a feature-rich financial management application."
   }
 }
-    
