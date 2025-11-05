@@ -30,10 +30,12 @@ export async function updateTransactions(input: UpdateTransactionsInput): Promis
     const batch = writeBatch(db);
 
     try {
+        // If it's a single transaction or only the current one should be updated
         if (scope === 'current' || !groupId) {
             const docRef = doc(db, `users/${userId}/transactions`, transactionId);
             batch.update(docRef, data);
         } else {
+            // Logic for 'future' or 'all' scopes
             const originalDocRef = doc(db, `users/${userId}/transactions`, transactionId);
             const originalDocSnap = await getDoc(originalDocRef);
 
@@ -48,32 +50,44 @@ export async function updateTransactions(input: UpdateTransactionsInput): Promis
             const querySnapshot = await getDocs(q);
 
             if (querySnapshot.empty) {
-                // Fallback to single update if no group found
+                // Fallback to single update if no group found, which should not happen but is safe
                 batch.update(originalDocRef, data);
             } else {
                 querySnapshot.forEach(docSnap => {
                     const currentTransaction = docSnap.data() as Transaction;
                     const currentDate = new Date(currentTransaction.date);
                     
-                    const shouldUpdate = 
-                        (scope === 'all') ||
-                        (scope === 'future' && currentDate >= originalDate);
+                    let shouldUpdate = false;
+                    if (scope === 'all') {
+                        shouldUpdate = true;
+                    } else if (scope === 'future') {
+                        // includes the current transaction and all after it
+                        shouldUpdate = currentDate >= originalDate;
+                    }
 
                     if (shouldUpdate) {
-                        // We keep the date of each installment to avoid shifting them all to the same date
-                        const { date, ...restOfData } = data; 
-                        batch.update(docSnap.ref, restOfData);
+                        // Apply the new data but preserve the original date and installment info
+                        const updatedData = {
+                            ...currentTransaction, // Keep original data
+                            ...data, // Overwrite with new data from form
+                            date: currentTransaction.date, // Explicitly preserve original date
+                            installments: currentTransaction.installments, // Explicitly preserve original installment data
+                        };
+                        batch.update(docSnap.ref, updatedData);
                     }
                 });
             }
         }
         
         await batch.commit();
+        
+        // Revalidate paths to update UI
         revalidatePath('/');
         revalidatePath('/history');
+
         return { success: true };
     } catch (error) {
         console.error("Erro ao atualizar transações:", error);
-        return { success: false, error: 'Ocorreu um erro no servidor.' };
+        return { success: false, error: 'Ocorreu um erro no servidor ao tentar atualizar as transações.' };
     }
 }
