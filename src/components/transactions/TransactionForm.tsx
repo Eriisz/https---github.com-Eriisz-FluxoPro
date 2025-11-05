@@ -147,9 +147,6 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                 category: category?.name || '',
                 type: data.type,
                 status: data.status,
-                // Editing recurring transactions as a single instance for simplicity
-                installments: undefined,
-                groupId: undefined,
             };
             setDocumentNonBlocking(transactionRef, updatedTransaction, { merge: true });
             toast({
@@ -160,7 +157,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
         } else {
             const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
             const installments = data.isRecurring ? parseInt(data.installments || '1', 10) : 1;
-            const groupId = installments > 1 ? crypto.randomUUID() : undefined;
+            const groupId = installments > 1 ? doc(collection(firestore, 'ids')).id : undefined;
 
             for (let i = 0; i < installments; i++) {
                 const transactionDate = addMonths(data.date, i);
@@ -379,6 +376,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                       onSelect={field.onChange}
                       initialFocus
                       locale={ptBR}
+                      disabled={(date) => date < new Date('1900-01-01')}
                     />
                   </PopoverContent>
                 </Popover>
