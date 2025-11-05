@@ -37,7 +37,8 @@ import type { Account, Category, Transaction } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
 import { collection, doc } from 'firebase/firestore';
 import { addMonths } from 'date-fns';
-import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { updateTransactions } from '@/lib/actions';
 
 interface TransactionFormProps {
     accounts: Account[];
@@ -56,6 +57,7 @@ const formSchema = z.object({
     status: z.enum(['PAID', 'PENDING', 'RECEIVED', 'LATE'], { required_error: "Selecione um status." }),
     frequency: z.enum(['single', 'installment', 'recurring']).default('single'),
     installments: z.string().optional(),
+    updateScope: z.enum(['current', 'future', 'all']).default('current').optional(),
   }).refine(data => {
     if (data.type === 'expense' && !data.categoryId) {
         return false;
@@ -88,14 +90,15 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     resolver: zodResolver(formSchema),
     defaultValues: isEditing ? {
         description: transaction.description,
-        value: String(transaction.value).replace('-',''),
+        value: String(Math.abs(transaction.value)),
         date: new Date(transaction.date),
         accountId: transaction.accountId,
         categoryId: transaction.categoryId,
         type: transaction.type,
         status: (transaction.status === 'PENDING' && isPast(new Date(transaction.date)) && new Date(transaction.date) < startOfToday()) ? 'LATE' : transaction.status,
         frequency: transaction.groupId ? (transaction.installments ? 'installment' : 'recurring') : 'single',
-        installments: String(transaction.installments?.total || '1')
+        installments: String(transaction.installments?.total || '1'),
+        updateScope: 'current'
     } : {
       description: '',
       value: '',
@@ -146,8 +149,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                 finalStatus = 'PENDING';
             }
 
-            const transactionRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
-            const updatedTransaction: Partial<Transaction> = {
+            const updatedTransactionData: Partial<Transaction> = {
                 description: data.description,
                 value: transactionValue,
                 date: data.date.toISOString(),
@@ -156,12 +158,23 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                 type: data.type,
                 status: finalStatus,
             };
-            setDocumentNonBlocking(transactionRef, updatedTransaction, { merge: true });
-            toast({
-                title: "Sucesso!",
-                description: "Transação atualizada com sucesso!",
+
+            const result = await updateTransactions({
+                userId: user.uid,
+                transactionId: transaction.id,
+                groupId: transaction.groupId,
+                scope: data.updateScope || 'current',
+                data: updatedTransactionData,
             });
 
+            if (result.success) {
+                toast({
+                    title: "Sucesso!",
+                    description: "Transação(ões) atualizada(s) com sucesso!",
+                });
+            } else {
+                throw new Error(result.error || 'Falha ao atualizar transações');
+            }
         } else {
             const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
             const groupId = numberOfInstallments > 1 ? doc(collection(firestore, '_')).id : undefined;
@@ -231,6 +244,50 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {isEditing && transaction?.groupId && (
+            <FormField
+            control={form.control}
+            name="updateScope"
+            render={({ field }) => (
+                <FormItem className="space-y-3 bg-muted p-3 rounded-md border">
+                <FormLabel className="text-sm font-semibold">Aplicar alterações em:</FormLabel>
+                <FormControl>
+                    <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-col space-y-1"
+                    >
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="current" />
+                        </FormControl>
+                        <FormLabel className="font-normal text-sm">
+                        Somente esta transação
+                        </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="future" />
+                        </FormControl>
+                        <FormLabel className="font-normal text-sm">
+                        Esta e as próximas transações
+                        </FormLabel>
+                    </FormItem>
+                    <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                        <RadioGroupItem value="all" />
+                        </FormControl>
+                        <FormLabel className="font-normal text-sm">
+                        Todas as transações (passadas e futuras)
+                        </FormLabel>
+                    </FormItem>
+                    </RadioGroup>
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        )}
         <FormField
           control={form.control}
           name="type"
@@ -392,6 +449,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
+                      disabled={isEditing}
                       initialFocus
                       locale={ptBR}
                     />

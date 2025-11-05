@@ -1,3 +1,4 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -5,10 +6,11 @@ import { z } from "zod";
 import { addMonths, format } from "date-fns";
 import { checkBudgetAndAlert } from "@/ai/flows/budgeting-alerts";
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, writeBatch } from 'firebase/firestore';
 import { getSdks } from "@/firebase";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { firebaseConfig } from "@/firebase/config";
+import type { Transaction } from "./definitions";
 
 // Function to get the Firestore instance on the server
 function getserverFirestore() {
@@ -138,4 +140,73 @@ export async function addTransaction(
   revalidatePath("/");
   revalidatePath("/history");
   return { message: `Transação ${data.installments > 1 ? 'parcelada ' : ''}adicionada com sucesso!` };
+}
+
+
+const updateTransactionsSchema = z.object({
+    userId: z.string(),
+    transactionId: z.string(),
+    groupId: z.string().optional(),
+    scope: z.enum(['current', 'future', 'all']),
+    data: z.any(),
+});
+
+type UpdateTransactionsInput = z.infer<typeof updateTransactionsSchema>;
+
+export async function updateTransactions(input: UpdateTransactionsInput): Promise<{ success: boolean, error?: string }> {
+    const validation = updateTransactionsSchema.safeParse(input);
+    if (!validation.success) {
+        return { success: false, error: 'Entrada inválida.' };
+    }
+
+    const { userId, transactionId, groupId, scope, data } = validation.data;
+    const db = getserverFirestore();
+    const batch = writeBatch(db);
+
+    try {
+        if (scope === 'current' || !groupId) {
+            const docRef = doc(db, `users/${userId}/transactions`, transactionId);
+            const { date, ...restOfData } = data; // Keep original date when only updating current
+            batch.update(docRef, restOfData);
+        } else {
+            const originalDocRef = doc(db, `users/${userId}/transactions`, transactionId);
+            const originalDocSnap = await originalDocRef.get();
+            if (!originalDocSnap.exists()) {
+                return { success: false, error: 'Transação original não encontrada.' };
+            }
+            const originalTransaction = originalDocSnap.data() as Transaction;
+            const originalDate = new Date(originalTransaction.date);
+
+            const transactionsCol = collection(db, `users/${userId}/transactions`);
+            const q = query(transactionsCol, where('groupId', '==', groupId));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                // Fallback to single update if no group found
+                batch.update(originalDocRef, data);
+            } else {
+                querySnapshot.forEach(docSnap => {
+                    const currentTransaction = docSnap.data() as Transaction;
+                    const currentDate = new Date(currentTransaction.date);
+                    
+                    const shouldUpdate = 
+                        (scope === 'all') ||
+                        (scope === 'future' && currentDate >= originalDate);
+
+                    if (shouldUpdate) {
+                        const { date, ...restOfData } = data; // Don't change dates of other installments
+                        batch.update(docSnap.ref, restOfData);
+                    }
+                });
+            }
+        }
+        
+        await batch.commit();
+        revalidatePath('/');
+        revalidatePath('/history');
+        return { success: true };
+    } catch (error) {
+        console.error("Erro ao atualizar transações:", error);
+        return { success: false, error: 'Ocorreu um erro no servidor.' };
+    }
 }
