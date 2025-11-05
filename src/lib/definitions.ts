@@ -5,7 +5,8 @@ export type Transaction = {
   date: string; // ISO string
   category: string; // Name of the category for display
   categoryId: string; // ID of the category for relations
-  account: string;
+  account: string; // Name of the account for display
+  accountId: string; // ID of the account for relations
   description: string;
   groupId?: string;
   installments?: {

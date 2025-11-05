@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
@@ -7,25 +8,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/utils";
-import type { Transaction, Category } from "@/lib/definitions";
-import { ArrowDown, ArrowUp, Loader } from "lucide-react";
-import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import type { Transaction, Category, Account } from "@/lib/definitions";
+import { Loader, PlusCircle } from "lucide-react";
+import { useCollection, useUser, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { TransactionDialog } from '@/components/transactions/TransactionDialog';
+import { HistoryTable } from '@/components/history/HistoryTable';
 
 export default function HistoryPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>(undefined);
 
   const transactionsQuery = useMemoFirebase(() => 
     user ? query(collection(firestore, `users/${user.uid}/transactions`), orderBy('date', 'desc')) : null, 
@@ -37,19 +31,41 @@ export default function HistoryPage() {
     [firestore, user]
   );
 
+  const accountsQuery = useMemoFirebase(() =>
+    user ? collection(firestore, `users/${user.uid}/accounts`) : null,
+    [firestore, user]
+  );
+
   const { data: transactions, isLoading: loadingTransactions } = useCollection<Transaction>(transactionsQuery);
   const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
+  const { data: accounts, isLoading: loadingAccounts } = useCollection<Account>(accountsQuery);
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setDialogOpen(true);
+  };
+  
+  const handleAddTransaction = () => {
+    setSelectedTransaction(undefined);
+    setDialogOpen(true);
+  }
 
   const getHistoryData = () => {
     const enrichedTransactions = (transactions || []).map(t => {
       const category = (categories || []).find(c => c.id === t.categoryId);
-      return { ...t, categoryColor: category?.color || '#A9A9A9', categoryName: category?.name || t.category };
+      const account = (accounts || []).find(a => a.id === t.accountId);
+      return { 
+        ...t, 
+        categoryColor: category?.color || '#A9A9A9', 
+        categoryName: category?.name || t.category,
+        accountName: account?.name || t.account
+      };
     });
     return { transactions: enrichedTransactions };
   }
 
   const { transactions: historyTransactions } = getHistoryData();
-  const isLoading = loadingTransactions || loadingCategories;
+  const isLoading = loadingTransactions || loadingCategories || loadingAccounts;
 
   if (isLoading) {
     return (
@@ -58,10 +74,33 @@ export default function HistoryPage() {
       </div>
     )
   }
+  
+  const handleDialogChange = (isOpen: boolean) => {
+    setDialogOpen(isOpen);
+    if (!isOpen) {
+        setSelectedTransaction(undefined);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Histórico de Transações" />
+      <PageHeader title="Histórico de Transações">
+         <TransactionDialog 
+            accounts={accounts || []} 
+            categories={categories || []}
+            isOpen={dialogOpen && !selectedTransaction}
+            onOpenChange={handleDialogChange}
+            trigger={
+                <button
+                    onClick={handleAddTransaction}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Adicionar Transação
+                </button>
+            }
+         />
+      </PageHeader>
       <Card>
         <CardHeader>
           <CardTitle>Todas as Movimentações</CardTitle>
@@ -70,52 +109,23 @@ export default function HistoryPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Conta</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {historyTransactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {transaction.type === 'income' ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-destructive" />}
-                      <span className="font-medium">{transaction.description}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className="text-white"
-                      style={{ backgroundColor: transaction.categoryColor }}
-                    >
-                      {transaction.categoryName}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{transaction.account}</TableCell>
-                  <TableCell>
-                    {new Date(transaction.date).toLocaleDateString("pt-BR", {timeZone: 'UTC'})}
-                  </TableCell>
-                  <TableCell
-                    className={`text-right font-medium ${
-                      transaction.type === "income"
-                        ? "text-primary"
-                        : "text-destructive"
-                    }`}
-                  >
-                    {formatCurrency(transaction.value)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <HistoryTable
+            transactions={historyTransactions}
+            onEdit={handleEditTransaction}
+          />
         </CardContent>
       </Card>
+      
+      {/* This dialog is controlled by the state above for editing */}
+      {selectedTransaction && (
+        <TransactionDialog 
+            accounts={accounts || []} 
+            categories={categories || []}
+            isOpen={dialogOpen && !!selectedTransaction}
+            onOpenChange={handleDialogChange}
+            transaction={selectedTransaction}
+        />
+      )}
     </div>
   );
 }

@@ -12,32 +12,49 @@ import {
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { TransactionForm } from './TransactionForm';
-import type { Account, Category } from '@/lib/definitions';
+import type { Account, Category, Transaction } from '@/lib/definitions';
 
 interface TransactionDialogProps {
     accounts: Account[];
     categories: Category[];
+    transaction?: Transaction;
+    isOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    trigger?: React.ReactNode;
 }
 
-export function TransactionDialog({ accounts, categories }: TransactionDialogProps) {
-  const [open, setOpen] = React.useState(false);
+export function TransactionDialog({ accounts, categories, transaction, isOpen, onOpenChange, trigger }: TransactionDialogProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
+
+  const open = isOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+  const isEditing = !!transaction;
+
+  const defaultTrigger = (
+    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+      <PlusCircle className="mr-2 h-4 w-4" />
+      Adicionar Transação
+    </Button>
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Adicionar Transação
-        </Button>
+        {trigger || defaultTrigger}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Adicionar Nova Transação</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar Transação' : 'Adicionar Nova Transação'}</DialogTitle>
           <DialogDescription>
-            Preencha os detalhes abaixo para registrar uma nova receita ou despesa.
+            {isEditing ? 'Atualize os detalhes da sua transação.' : 'Preencha os detalhes abaixo para registrar uma nova receita ou despesa.'}
           </DialogDescription>
         </DialogHeader>
-        <TransactionForm accounts={accounts} categories={categories} onFormSubmit={() => setOpen(false)} />
+        <TransactionForm 
+            accounts={accounts} 
+            categories={categories} 
+            onFormSubmit={() => setOpen(false)}
+            transaction={transaction}
+        />
       </DialogContent>
     </Dialog>
   );

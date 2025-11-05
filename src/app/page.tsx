@@ -167,7 +167,11 @@ export default function DashboardPage() {
   const isLoading = loadingAccounts || loadingCategories || loadingCurrentMonthTransactions || loadingRecent || loadingAllTransactions || loadingBudgets;
   
   if (isLoading) {
-      return <div>Carregando dados...</div>
+      return (
+        <div className="flex items-center justify-center h-full">
+            <Loader className="w-8 h-8 animate-spin" />
+        </div>
+      )
   }
 
   return (
