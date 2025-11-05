@@ -5,9 +5,8 @@ import { CategoryChart, MonthlyFlowChart, FutureBalanceChart } from "@/component
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
 import type { Transaction, Category, Account, Budget } from "@/lib/definitions";
-import { useCollection, useUser, useMemoFirebase } from '@/firebase';
+import { useCollection, useUser, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
 import { subMonths, startOfMonth, endOfMonth, format, addMonths } from 'date-fns';
 
 
@@ -21,9 +20,9 @@ export default function DashboardPage() {
     user ? collection(firestore, `users/${user.uid}/categories`) : null, [firestore, user]);
 
   const now = new Date();
-  const currentMonthStr = format(now, 'yyyy-MM');
-  const startOfCurrentMonth = startOfMonth(now);
-  const endOfCurrentMonth = endOfMonth(now);
+  const currentMonthStr = useMemoFirebase(() => format(now, 'yyyy-MM'), [now]);
+  const startOfCurrentMonth = useMemoFirebase(() => startOfMonth(now), [now]);
+  const endOfCurrentMonth = useMemoFirebase(() => endOfMonth(now), [now]);
   
   // Transactions for cards
   const currentMonthTransactionsQuery = useMemoFirebase(() =>
@@ -200,5 +199,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
