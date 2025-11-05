@@ -9,6 +9,7 @@ import type { Transaction, Category, Account, Budget } from "@/lib/definitions";
 import { useCollection, useUser, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { subMonths, startOfMonth, endOfMonth, format, addMonths } from 'date-fns';
+import { Loader } from 'lucide-react';
 
 
 export default function DashboardPage() {
