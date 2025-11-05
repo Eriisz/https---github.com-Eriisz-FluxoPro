@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Account } from '@/lib/definitions';
-import { doc, setDoc, collection } from 'firebase/firestore';
+import { doc, collection } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
@@ -71,13 +71,15 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     const id = existingAccount?.id || doc(collection(firestore, '_')).id;
     const accountRef = doc(firestore, `users/${user.uid}/accounts`, id);
 
+    const balanceValue = data.initialBalance ? parseFloat(data.initialBalance.replace(',', '.')) : 0;
+    
     const accountData = {
       id,
       userId: user.uid,
       name: data.name,
       type: data.type,
-      ...(isEditing ? {} : { balance: parseFloat(data.initialBalance?.replace(',', '.') || '0') }),
-      ...(data.type === 'CartaoCredito' && data.limit ? { limit: parseFloat(data.limit.replace(',', '.')) } : {}),
+      ...(isEditing ? {} : { balance: balanceValue }),
+      ...(data.type === 'CartaoCredito' && data.limit ? { limit: parseFloat(data.limit.replace(',', '.')) } : { limit: null }),
     };
     
     setDocumentNonBlocking(accountRef, accountData, { merge: true });
@@ -132,13 +134,13 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
           )}
         />
 
-        {!isEditing && (
+        {!isEditing && accountType !== 'CartaoCredito' && (
             <FormField
             control={form.control}
             name="initialBalance"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Saldo Inicial</FormLabel>
+                <FormLabel>Saldo Inicial (Opcional)</FormLabel>
                 <FormControl>
                     <Input type="text" placeholder="0,00" {...field} />
                 </FormControl>
