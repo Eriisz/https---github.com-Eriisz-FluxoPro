@@ -27,12 +27,13 @@ export default function DashboardPage() {
   const startOfCurrentMonth = useMemo(() => startOfMonth(now), [now]);
   const endOfCurrentMonth = useMemo(() => endOfMonth(now), [now]);
   
-  // Transactions for cards
+  // Transactions for cards and recent transactions
   const currentMonthTransactionsQuery = useMemoFirebase(() =>
     user ? query(
       collection(firestore, `users/${user.uid}/transactions`),
       where('date', '>=', startOfCurrentMonth.toISOString()),
-      where('date', '<=', endOfCurrentMonth.toISOString())
+      where('date', '<=', endOfCurrentMonth.toISOString()),
+      orderBy('date', 'desc')
     ) : null, [firestore, user, startOfCurrentMonth, endOfCurrentMonth]
   );
   
@@ -42,14 +43,6 @@ export default function DashboardPage() {
           collection(firestore, `users/${user.uid}/transactions`),
           orderBy('date', 'desc')
       ) : null, [firestore, user]
-  );
-
-  const recentTransactionsQuery = useMemoFirebase(() =>
-    user ? query(
-      collection(firestore, `users/${user.uid}/transactions`),
-      orderBy('date', 'desc'),
-      limit(5)
-    ) : null, [firestore, user]
   );
   
   const budgetsQuery = useMemoFirebase(() =>
@@ -63,7 +56,6 @@ export default function DashboardPage() {
   const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
   const { data: currentMonthTransactions, isLoading: loadingCurrentMonthTransactions } = useCollection<Transaction>(currentMonthTransactionsQuery);
   const { data: allTransactions, isLoading: loadingAllTransactions } = useCollection<Transaction>(allTransactionsQuery);
-  const { data: recentTransactionsData, isLoading: loadingRecent } = useCollection<Transaction>(recentTransactionsQuery);
   const { data: budgets, isLoading: loadingBudgets } = useCollection<Budget>(budgetsQuery);
 
 
@@ -108,10 +100,12 @@ export default function DashboardPage() {
       })
       .filter(c => c.total > 0);
 
-    const recentTransactions = (recentTransactionsData || [])
+    const recentTransactions = (currentMonthTransactions || [])
       .map(t => {
           const category = (categories || []).find(c => c.id === t.categoryId);
-          return {...t, categoryColor: category?.color || '#A9A9A9'}
+          const categoryName = category ? category.name : 'Sem Categoria';
+          const categoryColor = category ? category.color : '#A9A9A9';
+          return {...t, category: categoryName, categoryColor }
       });
       
     const monthlyFlow = Array.from({ length: 12 }, (_, i) => {
@@ -176,7 +170,7 @@ export default function DashboardPage() {
   }
 
   const data = getDashboardData();
-  const isLoading = loadingAccounts || loadingCategories || loadingCurrentMonthTransactions || loadingRecent || loadingAllTransactions || loadingBudgets;
+  const isLoading = loadingAccounts || loadingCategories || loadingCurrentMonthTransactions || loadingAllTransactions || loadingBudgets;
   
   if (isLoading) {
       return (
