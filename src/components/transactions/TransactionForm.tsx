@@ -106,9 +106,12 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
         const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
         const categoriesCol = collection(firestore, `users/${user.uid}/categories`);
         
-        const catQuery = query(categoriesCol, where("name", "==", data.category));
-        const catSnapshot = await getDocs(catQuery);
-        const categoryId = catSnapshot.empty ? null : catSnapshot.docs[0].id;
+        let categoryId: string | null = null;
+        if(data.category) {
+            const catQuery = query(categoriesCol, where("name", "==", data.category));
+            const catSnapshot = await getDocs(catQuery);
+            categoryId = catSnapshot.empty ? null : catSnapshot.docs[0].id;
+        }
 
         if (!categoryId && data.type === 'expense') {
             form.setError('category', { message: 'Categoria é obrigatória para despesas.' });
@@ -336,7 +339,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                     selected={field.value}
                     onSelect={field.onChange}
                     disabled={(date) =>
-                      date > new Date() || date < new Date("1900-01-01")
+                      date < new Date("1900-01-01")
                     }
                     initialFocus
                     locale={ptBR}
