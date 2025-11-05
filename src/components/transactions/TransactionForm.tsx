@@ -37,7 +37,7 @@ import type { Account, Category, Transaction } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
 import { collection, doc } from 'firebase/firestore';
 import { addMonths } from 'date-fns';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { updateTransactions } from '@/lib/actions';
 
 interface TransactionFormProps {
@@ -52,20 +52,12 @@ const formSchema = z.object({
     value: z.string().refine(val => !isNaN(parseFloat(val.replace(',', '.'))), { message: "Valor inválido." }),
     date: z.date(),
     accountId: z.string().min(1, { message: "Selecione uma conta." }),
-    categoryId: z.string().optional(),
+    categoryId: z.string().min(1, { message: "Selecione uma categoria." }),
     type: z.enum(['income', 'expense'], { required_error: "Selecione o tipo." }),
     status: z.enum(['PAID', 'PENDING', 'RECEIVED', 'LATE'], { required_error: "Selecione um status." }),
     frequency: z.enum(['single', 'installment', 'recurring']).default('single'),
     installments: z.string().optional(),
     updateScope: z.enum(['current', 'future', 'all']).default('current').optional(),
-  }).refine(data => {
-    if (data.type === 'expense' && !data.categoryId) {
-        return false;
-    }
-    return true;
-  }, {
-    message: "Selecione uma categoria para despesas.",
-    path: ["categoryId"],
   });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -84,7 +76,6 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     [firestore, user]
   );
   const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
-
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -114,6 +105,30 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
 
   const transactionFrequency = form.watch('frequency');
   const transactionType = form.watch('type');
+  
+  const allCategories = categories || initialCategories;
+
+  useEffect(() => {
+    if (transactionType === 'income') {
+      const incomeCategory = allCategories.find(c => c.name === 'Receita' && c.type === 'income');
+      if (incomeCategory) {
+        form.setValue('categoryId', incomeCategory.id);
+      } else if (user && !loadingCategories) {
+        // Create default income category if it doesn't exist
+        const id = doc(collection(firestore, '_')).id;
+        const categoryRef = doc(firestore, `users/${user.uid}/categories`, id);
+        const categoryData = {
+          id,
+          userId: user.uid,
+          name: 'Receita',
+          color: '#10B981', // A nice green color for income
+          type: 'income',
+        };
+        setDocumentNonBlocking(categoryRef, categoryData, { merge: true });
+        form.setValue('categoryId', id);
+      }
+    }
+  }, [transactionType, allCategories, form, user, firestore, loadingCategories]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -130,10 +145,10 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     setIsSubmitting(true);
     
     try {
-        const category = (categories || initialCategories).find(c => c.id === data.categoryId);
+        const category = allCategories.find(c => c.id === data.categoryId);
         const account = accounts.find(a => a.id === data.accountId);
 
-        if ((data.type === 'expense' && !category) || !account) {
+        if (!category || !account) {
             toast({ variant: 'destructive', title: 'Erro', description: 'Categoria ou conta inválida.' });
             setIsSubmitting(false);
             return;
@@ -149,7 +164,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                 finalStatus = 'PENDING';
             }
 
-            const updatedTransactionData: Partial<Transaction> = {
+            const updatedTransactionData: Partial<Omit<Transaction, 'id' | 'installments' | 'groupId'>> = {
                 description: data.description,
                 value: transactionValue,
                 date: data.date.toISOString(),
@@ -233,9 +248,8 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
   }
 
   const filteredCategories = React.useMemo(() => {
-    if (!categories && !initialCategories) return [];
-    return (categories || initialCategories).filter(c => c.type === transactionType);
-  }, [categories, initialCategories, transactionType]);
+    return allCategories.filter(c => c.type === transactionType);
+  }, [allCategories, transactionType]);
 
 
   if (isUserLoading || loadingCategories) return <div>Carregando...</div>;
@@ -375,7 +389,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
               <FormItem>
                 <FormLabel>Categoria</FormLabel>
                 <div className="flex items-center gap-2">
-                <Select onValueChange={field.onChange} value={field.value} disabled={transactionType === 'income'}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
@@ -387,7 +401,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                     ))}
                   </SelectContent>
                 </Select>
-                <Button type="button" variant="ghost" size="icon" onClick={() => setCategoryDialogOpen(true)} disabled={transactionType === 'income'}>
+                <Button type="button" variant="ghost" size="icon" onClick={() => setCategoryDialogOpen(true)}>
                     <PlusCircle className="h-4 w-4"/>
                 </Button>
                 </div>
@@ -554,5 +568,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     </>
   );
 }
+
+    
 
     
