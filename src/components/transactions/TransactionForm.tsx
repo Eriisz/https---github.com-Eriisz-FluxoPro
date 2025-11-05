@@ -31,7 +31,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Calculator } from '@/components/shared/Calculator';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Account, Category, Transaction } from '@/lib/definitions';
@@ -55,7 +54,7 @@ const formSchema = z.object({
     categoryId: z.string().optional(),
     type: z.enum(['income', 'expense'], { required_error: "Selecione o tipo." }),
     status: z.enum(['PAID', 'PENDING', 'RECEIVED', 'LATE'], { required_error: "Selecione um status." }),
-    isRecurring: z.boolean().default(false),
+    frequency: z.enum(['single', 'installment', 'recurring']).default('single'),
     installments: z.string().optional(),
   }).refine(data => {
     if (data.type === 'expense' && !data.categoryId) {
@@ -95,7 +94,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
         categoryId: transaction.categoryId,
         type: transaction.type,
         status: (transaction.status === 'PENDING' && isPast(new Date(transaction.date)) && new Date(transaction.date) < startOfToday()) ? 'LATE' : transaction.status,
-        isRecurring: !!transaction.groupId,
+        frequency: transaction.groupId ? (transaction.installments ? 'installment' : 'recurring') : 'single',
         installments: String(transaction.installments?.total || '1')
     } : {
       description: '',
@@ -105,12 +104,12 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
       categoryId: '',
       type: 'expense',
       status: 'PAID',
-      isRecurring: false,
+      frequency: 'single',
       installments: '1',
     },
   });
 
-  const isRecurring = form.watch('isRecurring');
+  const transactionFrequency = form.watch('frequency');
   const transactionType = form.watch('type');
 
   useEffect(() => {
@@ -137,15 +136,16 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
             return;
         }
 
-        const value = parseFloat(data.value.replace(',', '.'));
-        const transactionValue = data.type === 'expense' ? -value : value;
-        
-        let finalStatus = data.status;
-        if (data.status === 'LATE') {
-            finalStatus = 'PENDING';
-        }
+        const totalValue = parseFloat(data.value.replace(',', '.'));
+        const numberOfInstallments = data.frequency !== 'single' ? parseInt(data.installments || '1', 10) : 1;
 
         if (isEditing && transaction) {
+            const transactionValue = data.type === 'expense' ? -totalValue : totalValue;
+            let finalStatus = data.status;
+            if (data.status === 'LATE') {
+                finalStatus = 'PENDING';
+            }
+
             const transactionRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
             const updatedTransaction: Partial<Transaction> = {
                 description: data.description,
@@ -164,12 +164,23 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
 
         } else {
             const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
-            const installments = data.isRecurring ? parseInt(data.installments || '1', 10) : 1;
-            const groupId = installments > 1 ? doc(collection(firestore, '_')).id : undefined;
+            const groupId = numberOfInstallments > 1 ? doc(collection(firestore, '_')).id : undefined;
 
-            for (let i = 0; i < installments; i++) {
+            for (let i = 0; i < numberOfInstallments; i++) {
                 const transactionDate = addMonths(data.date, i);
                 
+                let installmentValue = totalValue;
+                if (data.frequency === 'installment') {
+                    installmentValue = totalValue / numberOfInstallments;
+                }
+
+                const transactionValue = data.type === 'expense' ? -installmentValue : installmentValue;
+                
+                let finalStatus = data.status;
+                if (data.status === 'LATE') {
+                    finalStatus = 'PENDING';
+                }
+
                 const newTransaction: Omit<Transaction, 'id'> = {
                     userId: user.uid,
                     description: data.description,
@@ -180,7 +191,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                     type: data.type,
                     status: finalStatus,
                     ...(groupId && { groupId }),
-                    ...(installments > 1 && { installments: { current: i + 1, total: installments } }),
+                    ...(numberOfInstallments > 1 && { installments: { current: i + 1, total: numberOfInstallments } }),
                 };
                 
                 addDocumentNonBlocking(transactionsCol, newTransaction);
@@ -188,7 +199,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
 
             toast({
                 title: "Sucesso!",
-                description: `Transação ${installments > 1 ? 'parcelada ' : ''}adicionada com sucesso!`,
+                description: `Transação ${data.frequency !== 'single' ? data.frequency : ''} adicionada com sucesso!`,
             });
         }
 
@@ -422,32 +433,51 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
               )}
             />
         </div>
-
+        
         <FormField
           control={form.control}
-          name="isRecurring"
+          name="frequency"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-              <div className="space-y-0.5">
-                <FormLabel>Parcelamento / Recorrência</FormLabel>
-              </div>
+            <FormItem className="space-y-3">
+              <FormLabel>Frequência</FormLabel>
               <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex space-x-4"
                   disabled={isEditing}
-                />
+                >
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="single" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Única</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="installment" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Parcelada</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="recurring" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Recorrente</FormLabel>
+                  </FormItem>
+                </RadioGroup>
               </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />
-        {isRecurring && !isEditing && (
+        {transactionFrequency !== 'single' && !isEditing && (
             <FormField
             control={form.control}
             name="installments"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Número de Parcelas / Meses</FormLabel>
+                <FormLabel>{transactionFrequency === 'installment' ? 'Número de Parcelas' : 'Número de Meses'}</FormLabel>
                 <FormControl>
                     <Input type="number" placeholder="Ex: 12" {...field} disabled={isEditing} />
                 </FormControl>
@@ -466,3 +496,5 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     </>
   );
 }
+
+    
