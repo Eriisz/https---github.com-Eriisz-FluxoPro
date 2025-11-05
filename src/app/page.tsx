@@ -1,14 +1,14 @@
 'use client';
 import { PageHeader } from "@/components/PageHeader";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
-import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
+import { CategoryChart, MonthlyFlowChart, FutureBalanceChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
 import type { Transaction, Category, Account, Budget } from "@/lib/definitions";
 import { useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { subMonths, startOfMonth, endOfMonth, format } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, format, addMonths } from 'date-fns';
 
 
 export default function DashboardPage() {
@@ -22,16 +22,19 @@ export default function DashboardPage() {
 
   const now = new Date();
   const currentMonthStr = format(now, 'yyyy-MM');
-  const oneMonthAgo = startOfMonth(now);
+  const startOfCurrentMonth = startOfMonth(now);
+  const endOfCurrentMonth = endOfMonth(now);
   
+  // Transactions for cards
   const currentMonthTransactionsQuery = useMemoFirebase(() =>
     user ? query(
       collection(firestore, `users/${user.uid}/transactions`),
-      where('date', '>=', oneMonthAgo.toISOString()),
-      where('date', '<=', endOfMonth(now).toISOString())
-    ) : null, [firestore, user]
+      where('date', '>=', startOfCurrentMonth.toISOString()),
+      where('date', '<=', endOfCurrentMonth.toISOString())
+    ) : null, [firestore, user, startOfCurrentMonth, endOfCurrentMonth]
   );
   
+  // All transactions for balance and charts
   const allTransactionsQuery = useMemoFirebase(() =>
       user ? query(
           collection(firestore, `users/${user.uid}/transactions`),
@@ -63,19 +66,32 @@ export default function DashboardPage() {
 
 
   const getDashboardData = () => {
-    const transactions = currentMonthTransactions || [];
+    const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
     
-    const balance = (allTransactions || []).reduce((acc, t) => acc + t.value, 0);
-    const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.value, 0);
-    const expenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.value, 0);
+    // Balance considers all paid/received transactions
+    const balance = (allTransactions || [])
+        .filter(t => paidOrReceivedStatuses.includes(t.status))
+        .reduce((acc, t) => acc + t.value, 0);
+
+    const transactionsThisMonth = currentMonthTransactions || [];
+    
+    const income = transactionsThisMonth
+        .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
+        .reduce((acc, t) => acc + t.value, 0);
+    const expenses = transactionsThisMonth
+        .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
+        .reduce((acc, t) => acc + t.value, 0);
+    const pendingBills = transactionsThisMonth
+        .filter(t => t.type === 'expense' && t.status === 'PENDING')
+        .reduce((acc, t) => acc + t.value, 0);
 
     const totalBudget = (budgets || []).reduce((acc, b) => acc + b.limit, 0);
     
     const categorySpending = (categories || [])
       .filter(c => c.type === 'expense')
       .map(category => {
-          const total = transactions
-              .filter(t => t.category === category.name && t.type === 'expense')
+          const total = transactionsThisMonth
+              .filter(t => t.categoryId === category.id && t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
               .reduce((acc, t) => acc + Math.abs(t.value), 0);
           return { category: category.name, total, fill: category.color };
       })
@@ -83,7 +99,7 @@ export default function DashboardPage() {
 
     const recentTransactions = (recentTransactionsData || [])
       .map(t => {
-          const category = (categories || []).find(c => c.name === t.category);
+          const category = (categories || []).find(c => c.id === t.categoryId);
           return {...t, categoryColor: category?.color || '#A9A9A9'}
       });
       
@@ -94,7 +110,7 @@ export default function DashboardPage() {
 
         const monthTransactions = (allTransactions || []).filter(t => {
             const tDate = new Date(t.date);
-            return tDate >= start && tDate <= end;
+            return tDate >= start && tDate <= end && paidOrReceivedStatuses.includes(t.status);
         });
         
         return {
@@ -103,6 +119,33 @@ export default function DashboardPage() {
             expenses: monthTransactions.filter(t=> t.type === 'expense').reduce((acc, t) => acc + t.value, 0)
         }
     }).reverse();
+
+    const futureBalance = Array.from({ length: 12 }, (_, i) => {
+        const monthDate = addMonths(startOfCurrentMonth, i);
+        const start = startOfMonth(monthDate);
+        const end = endOfMonth(monthDate);
+
+        const futureTransactions = (allTransactions || []).filter(t => {
+            const tDate = new Date(t.date);
+            return tDate >= start && tDate <= end;
+        });
+
+        const monthlyNet = futureTransactions.reduce((acc, t) => acc + t.value, 0);
+
+        return {
+            month: start.toLocaleString('pt-BR', { month: 'short' }),
+            net: monthlyNet,
+        }
+    });
+
+    let cumulativeBalance = balance;
+    const futureBalanceProjection = futureBalance.map(item => {
+        cumulativeBalance += item.net;
+        return {
+            month: item.month,
+            balance: cumulativeBalance
+        };
+    });
       
     return {
       accounts: accounts || [],
@@ -110,11 +153,13 @@ export default function DashboardPage() {
       balance,
       income,
       expenses,
+      pendingBills: Math.abs(pendingBills),
       totalBudget: totalBudget,
       spentThisMonth: Math.abs(expenses),
       categorySpending,
       monthlyFlow: monthlyFlow.map(d => ({ ...d, expenses: Math.abs(d.expenses) })),
       recentTransactions,
+      futureBalanceProjection,
     };
   }
 
@@ -137,9 +182,10 @@ export default function DashboardPage() {
         expenses={data.expenses}
         budget={data.totalBudget}
         spent={data.spentThisMonth}
+        pendingBills={data.pendingBills}
       />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <MonthlyFlowChart data={data.monthlyFlow} />
         </div>
@@ -147,8 +193,12 @@ export default function DashboardPage() {
           <CategoryChart data={data.categorySpending} />
         </div>
       </div>
-
+        <div className="grid gap-6">
+            <FutureBalanceChart data={data.futureBalanceProjection} />
+        </div>
       <RecentTransactions transactions={data.recentTransactions} />
     </div>
   );
 }
+
+    

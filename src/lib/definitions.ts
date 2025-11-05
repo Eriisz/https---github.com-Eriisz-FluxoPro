@@ -13,6 +13,7 @@ export type Transaction = {
     total: number;
   };
   type: 'income' | 'expense';
+  status: 'PAID' | 'PENDING' | 'RECEIVED' | 'LATE';
 };
 
 export type Account = {
@@ -46,3 +47,4 @@ export type User = {
     phoneNumber: string;
     createdAt: string;
 }
+    

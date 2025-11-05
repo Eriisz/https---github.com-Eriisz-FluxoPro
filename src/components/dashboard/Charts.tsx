@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip, Line, LineChart } from "recharts"
 import {
   Card,
   CardContent,
@@ -99,3 +99,55 @@ export function MonthlyFlowChart({ data }: { data: any[] }) {
     </Card>
   )
 }
+
+
+export function FutureBalanceChart({ data }: { data: { month: string, balance: number }[] }) {
+    const chartConfig = {
+      balance: { label: "Saldo Projetado", color: "hsl(var(--chart-1))" },
+    };
+  
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Projeção de Saldo Futuro</CardTitle>
+          <CardDescription>
+            Previsão do saldo acumulado para os próximos 12 meses.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <LineChart
+              accessibilityLayer
+              data={data}
+              margin={{
+                left: 12,
+                right: 12,
+              }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(value) => value.slice(0, 3)}
+              />
+              <RechartsTooltip
+                cursor={false}
+                content={<ChartTooltipContent formatter={(value) => formatCurrency(Number(value))} hideIndicator />}
+              />
+              <Line
+                dataKey="balance"
+                type="monotone"
+                stroke="hsl(var(--chart-1))"
+                strokeWidth={2}
+                dot={true}
+              />
+            </LineChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+    );
+  }
+
+    

@@ -53,6 +53,7 @@ const formSchema = z.object({
     account: z.string().min(1, { message: "Selecione uma conta." }),
     category: z.string().optional(),
     type: z.enum(['income', 'expense'], { required_error: "Selecione o tipo." }),
+    status: z.enum(['PAID', 'PENDING', 'RECEIVED', 'LATE'], { required_error: "Selecione um status." }),
     isRecurring: z.boolean().default(false),
     installments: z.string().optional(),
   }).refine(data => data.type === 'income' || (data.type === 'expense' && data.category), {
@@ -86,6 +87,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
       account: '',
       category: '',
       type: 'expense',
+      status: 'PAID',
       isRecurring: false,
       installments: '1',
     },
@@ -93,6 +95,10 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
 
   const isRecurring = form.watch('isRecurring');
   const transactionType = form.watch('type');
+
+  useEffect(() => {
+    form.setValue('status', transactionType === 'income' ? 'RECEIVED' : 'PAID');
+  }, [transactionType, form]);
 
   async function onSubmit(data: FormValues) {
     if (!user) {
@@ -137,12 +143,10 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                 category: data.category || '',
                 categoryId: categoryId || '',
                 type: data.type,
+                status: data.status,
+                ...(groupId && { groupId }),
+                ...(installments > 1 && { installments: { current: i + 1, total: installments } }),
             };
-
-            if (groupId) {
-              newTransaction.groupId = groupId;
-              newTransaction.installments = { current: i + 1, total: installments };
-            }
             
             addDocumentNonBlocking(transactionsCol, newTransaction);
         }
@@ -307,49 +311,78 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
             )}
           />
         </div>
-
-        <FormField
-          control={form.control}
-          name="date"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Data da Transação</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP", { locale: ptBR })
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Data da Transação</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP", { locale: ptBR })
+                        ) : (
+                          <span>Escolha uma data</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+           <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {transactionType === 'income' ? (
+                        <>
+                          <SelectItem value="RECEIVED">Recebido</SelectItem>
+                          <SelectItem value="PENDING">Pendente</SelectItem>
+                        </>
                       ) : (
-                        <span>Escolha uma data</span>
+                        <>
+                          <SelectItem value="PAID">Pago</SelectItem>
+                          <SelectItem value="PENDING">Pendente</SelectItem>
+                          <SelectItem value="LATE">Atrasado</SelectItem>
+                        </>
                       )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) =>
-                      date < new Date("1900-01-01")
-                    }
-                    initialFocus
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </div>
 
         <FormField
           control={form.control}
@@ -393,3 +426,5 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     </>
   );
 }
+
+    
