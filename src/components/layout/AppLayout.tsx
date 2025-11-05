@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -72,7 +73,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
-  if (isUserLoading || isProfileLoading || (!user && !isAuthPage)) {
+  if (isUserLoading || (!user && !isAuthPage)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader className="w-16 h-16 animate-spin text-primary" />
@@ -139,10 +140,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="p-4 border-t border-border mt-2">
             <div className="flex items-center gap-3">
                 <Avatar>
-                    <AvatarFallback>{getInitials(userProfile?.name)}</AvatarFallback>
+                    <AvatarFallback>
+                        {isProfileLoading ? <Loader className="w-4 h-4 animate-spin"/> : getInitials(userProfile?.name)}
+                    </AvatarFallback>
                 </Avatar>
                 <div>
-                    <p className="text-sm font-semibold">{userProfile?.name || 'Usuário'}</p>
+                    <p className="text-sm font-semibold">{isProfileLoading ? 'Carregando...' : userProfile?.name || 'Usuário'}</p>
                     <p className="text-xs text-muted-foreground">{userProfile?.phoneNumber}</p>
                 </div>
             </div>
