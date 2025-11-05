@@ -3,6 +3,7 @@
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProfileForm } from '@/components/settings/ProfileForm';
+import { ImportExport } from '@/components/settings/ImportExport';
 import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
@@ -31,17 +32,21 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Ajustes" />
-      <Card>
-        <CardHeader>
-          <CardTitle>Perfil</CardTitle>
-          <CardDescription>
-            Gerencie as informações do seu perfil.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ProfileForm userProfile={userProfile} />
-        </CardContent>
-      </Card>
+      <div className="grid gap-6">
+        <Card>
+            <CardHeader>
+            <CardTitle>Perfil</CardTitle>
+            <CardDescription>
+                Gerencie as informações do seu perfil.
+            </CardDescription>
+            </CardHeader>
+            <CardContent>
+            <ProfileForm userProfile={userProfile} />
+            </CardContent>
+        </Card>
+
+        <ImportExport />
+      </div>
     </div>
   );
 }
