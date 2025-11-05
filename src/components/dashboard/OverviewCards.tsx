@@ -40,7 +40,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, pendin
         <CardContent>
           <div className="text-2xl font-bold text-primary">{formatCurrency(income)}</div>
           <p className="text-xs text-muted-foreground">
-            Receitas confirmadas no mês atual
+            Total de receitas no mês atual
           </p>
         </CardContent>
       </Card>
@@ -54,7 +54,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, pendin
         <CardContent>
           <div className="text-2xl font-bold text-destructive">{formatCurrency(expenses)}</div>
            <p className="text-xs text-muted-foreground">
-            Despesas pagas no mês atual
+            Total de despesas no mês atual
           </p>
         </CardContent>
       </Card>
@@ -87,5 +87,3 @@ export function OverviewCards({ balance, income, expenses, budget, spent, pendin
     </div>
   );
 }
-
-    

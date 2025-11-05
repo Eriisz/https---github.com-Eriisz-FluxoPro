@@ -77,10 +77,10 @@ export default function DashboardPage() {
     const transactionsThisMonth = currentMonthTransactions || [];
     
     const income = transactionsThisMonth
-        .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
+        .filter(t => t.type === 'income')
         .reduce((acc, t) => acc + t.value, 0);
     const expenses = transactionsThisMonth
-        .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
+        .filter(t => t.type === 'expense')
         .reduce((acc, t) => acc + t.value, 0);
     const pendingBills = transactionsThisMonth
         .filter(t => t.type === 'expense' && t.status === 'PENDING')
@@ -88,6 +88,10 @@ export default function DashboardPage() {
 
     const totalBudget = (budgets || []).reduce((acc, b) => acc + b.limit, 0);
     
+    const spentThisMonth = transactionsThisMonth
+        .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
+        .reduce((acc, t) => acc + t.value, 0);
+        
     const categorySpending = (categories || [])
       .filter(c => c.type === 'expense')
       .map(category => {
@@ -156,7 +160,7 @@ export default function DashboardPage() {
       expenses,
       pendingBills: Math.abs(pendingBills),
       totalBudget: totalBudget,
-      spentThisMonth: Math.abs(expenses),
+      spentThisMonth: Math.abs(spentThisMonth),
       categorySpending,
       monthlyFlow: monthlyFlow.map(d => ({ ...d, expenses: Math.abs(d.expenses) })),
       recentTransactions,
