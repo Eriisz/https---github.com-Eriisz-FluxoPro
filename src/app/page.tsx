@@ -1,4 +1,5 @@
 'use client';
+import { useMemo } from 'react';
 import { PageHeader } from "@/components/PageHeader";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart, FutureBalanceChart } from "@/components/dashboard/Charts";
@@ -19,10 +20,10 @@ export default function DashboardPage() {
   const categoriesQuery = useMemoFirebase(() => 
     user ? collection(firestore, `users/${user.uid}/categories`) : null, [firestore, user]);
 
-  const now = new Date();
-  const currentMonthStr = useMemoFirebase(() => format(now, 'yyyy-MM'), [now]);
-  const startOfCurrentMonth = useMemoFirebase(() => startOfMonth(now), [now]);
-  const endOfCurrentMonth = useMemoFirebase(() => endOfMonth(now), [now]);
+  const now = useMemo(() => new Date(), []);
+  const currentMonthStr = useMemo(() => format(now, 'yyyy-MM'), [now]);
+  const startOfCurrentMonth = useMemo(() => startOfMonth(now), [now]);
+  const endOfCurrentMonth = useMemo(() => endOfMonth(now), [now]);
   
   // Transactions for cards
   const currentMonthTransactionsQuery = useMemoFirebase(() =>
