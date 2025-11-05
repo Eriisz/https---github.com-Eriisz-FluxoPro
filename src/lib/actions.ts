@@ -62,16 +62,13 @@ export async function updateTransactions(input: UpdateTransactionsInput): Promis
                         shouldUpdate = true;
                     } else if (scope === 'future') {
                         // includes the current transaction and all after it
-                        shouldUpdate = currentDate >= originalDate;
+                        shouldUpdate = currentDate.getTime() >= originalDate.getTime();
                     }
 
                     if (shouldUpdate) {
                         // Apply the new data but preserve the original date and installment info
                         const updatedData = {
-                            ...currentTransaction, // Keep original data
                             ...data, // Overwrite with new data from form
-                            date: currentTransaction.date, // Explicitly preserve original date
-                            installments: currentTransaction.installments, // Explicitly preserve original installment data
                         };
                         batch.update(docSnap.ref, updatedData);
                     }
