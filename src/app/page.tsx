@@ -83,8 +83,13 @@ export default function DashboardPage() {
     const expenses = transactionsThisMonth
         .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
-    const pendingBills = transactionsThisMonth
+    
+    const pendingExpenses = transactionsThisMonth
         .filter(t => t.type === 'expense' && t.status === 'PENDING')
+        .reduce((acc, t) => acc + t.value, 0);
+    
+    const pendingIncome = transactionsThisMonth
+        .filter(t => t.type === 'income' && t.status === 'PENDING')
         .reduce((acc, t) => acc + t.value, 0);
 
     const totalBudget = (budgets || []).reduce((acc, b) => acc + b.limit, 0);
@@ -159,7 +164,8 @@ export default function DashboardPage() {
       balance,
       income,
       expenses,
-      pendingBills: Math.abs(pendingBills),
+      pendingExpenses: Math.abs(pendingExpenses),
+      pendingIncome: pendingIncome,
       totalBudget: totalBudget,
       spentThisMonth: Math.abs(spentThisMonth),
       categorySpending,
@@ -192,7 +198,8 @@ export default function DashboardPage() {
         expenses={Math.abs(data.expenses)}
         budget={data.totalBudget}
         spent={data.spentThisMonth}
-        pendingBills={data.pendingBills}
+        pendingIncome={data.pendingIncome}
+        pendingExpenses={data.pendingExpenses}
       />
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-5">
