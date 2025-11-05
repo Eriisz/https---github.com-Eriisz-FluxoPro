@@ -88,7 +88,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
     resolver: zodResolver(formSchema),
     defaultValues: isEditing ? {
         description: transaction.description,
-        value: String(Math.abs(transaction.value)),
+        value: String(transaction.value).replace('-',''),
         date: new Date(transaction.date),
         accountId: transaction.accountId,
         categoryId: transaction.categoryId,
