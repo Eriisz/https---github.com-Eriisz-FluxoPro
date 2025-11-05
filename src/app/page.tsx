@@ -1,3 +1,4 @@
+
 'use client';
 import { useMemo } from 'react';
 import { PageHeader } from "@/components/PageHeader";
@@ -77,10 +78,10 @@ export default function DashboardPage() {
     const transactionsThisMonth = currentMonthTransactions || [];
     
     const income = transactionsThisMonth
-        .filter(t => t.type === 'income')
+        .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
     const expenses = transactionsThisMonth
-        .filter(t => t.type === 'expense')
+        .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
     const pendingBills = transactionsThisMonth
         .filter(t => t.type === 'expense' && t.status === 'PENDING')
@@ -188,7 +189,7 @@ export default function DashboardPage() {
       <OverviewCards 
         balance={data.balance}
         income={data.income}
-        expenses={data.expenses}
+        expenses={Math.abs(data.expenses)}
         budget={data.totalBudget}
         spent={data.spentThisMonth}
         pendingBills={data.pendingBills}
