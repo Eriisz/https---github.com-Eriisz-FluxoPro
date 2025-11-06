@@ -9,7 +9,7 @@ import { CalendarIcon, Calculator as CalculatorIcon, PlusCircle } from 'lucide-r
 import { format, isPast, startOfToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -39,6 +39,7 @@ import { collection, doc } from 'firebase/firestore';
 import { addMonths } from 'date-fns';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { updateTransactions } from '@/lib/actions';
+import { useData } from '@/context/DataContext';
 
 interface TransactionFormProps {
     accounts: Account[];
@@ -62,20 +63,15 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function TransactionForm({ accounts, categories: initialCategories, onFormSubmit, transaction }: TransactionFormProps) {
+export function TransactionForm({ accounts: initialAccounts, categories: initialCategories, onFormSubmit, transaction }: TransactionFormProps) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { categories, accounts, isLoading: isDataLoading } = useData();
   const isEditing = !!transaction;
   
-
-  const categoriesQuery = useMemoFirebase(
-    () => (user ? collection(firestore, `users/${user.uid}/categories`) : null),
-    [firestore, user]
-  );
-  const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -107,13 +103,14 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
   const transactionType = form.watch('type');
   
   const allCategories = categories || initialCategories;
+  const allAccounts = accounts || initialAccounts;
 
   useEffect(() => {
-    if (transactionType === 'income') {
+    if (transactionType === 'income' && !isEditing) {
       const incomeCategory = allCategories.find(c => c.name === 'Receita' && c.type === 'income');
       if (incomeCategory) {
         form.setValue('categoryId', incomeCategory.id);
-      } else if (user && !loadingCategories) {
+      } else if (user && !isDataLoading) {
         // Create default income category if it doesn't exist
         const id = doc(collection(firestore, '_')).id;
         const categoryRef = doc(firestore, `users/${user.uid}/categories`, id);
@@ -128,7 +125,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
         form.setValue('categoryId', id);
       }
     }
-  }, [transactionType, allCategories, form, user, firestore, loadingCategories]);
+  }, [transactionType, allCategories, form, user, firestore, isDataLoading, isEditing]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -141,12 +138,16 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
       toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
       return;
     }
+    if (!allAccounts) {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Contas não carregadas.' });
+        return;
+    }
 
     setIsSubmitting(true);
     
     try {
         const category = allCategories.find(c => c.id === data.categoryId);
-        const account = accounts.find(a => a.id === data.accountId);
+        const account = allAccounts.find(a => a.id === data.accountId);
 
         if (!category || !account) {
             toast({ variant: 'destructive', title: 'Erro', description: 'Categoria ou conta inválida.' });
@@ -164,7 +165,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                 finalStatus = 'PENDING';
             }
 
-            const updatedTransactionData: Partial<Omit<Transaction, 'id' | 'installments' | 'groupId'>> = {
+            const updatedTransactionData = {
                 description: data.description,
                 value: transactionValue,
                 accountId: data.accountId,
@@ -226,7 +227,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
 
             toast({
                 title: "Sucesso!",
-                description: `Transação ${data.frequency !== 'single' ? data.frequency : ''} adicionada com sucesso!`,
+                description: `Transação ${numberOfInstallments > 1 ? data.frequency : ''} adicionada com sucesso!`,
             });
         }
 
@@ -251,7 +252,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
   }, [allCategories, transactionType]);
 
 
-  if (isUserLoading || loadingCategories) return <div>Carregando...</div>;
+  if (isUserLoading || isDataLoading) return <div>Carregando...</div>;
 
   return (
     <>
@@ -388,7 +389,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
               <FormItem>
                 <FormLabel>Categoria</FormLabel>
                 <div className="flex items-center gap-2">
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={transactionType === 'income'}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
@@ -423,7 +424,7 @@ export function TransactionForm({ accounts, categories: initialCategories, onFor
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {accounts.map(a => (
+                    {(allAccounts || []).map(a => (
                       <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                     ))}
                   </SelectContent>

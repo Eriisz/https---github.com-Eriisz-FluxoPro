@@ -1,29 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Loader, PlusCircle } from 'lucide-react';
 import type { Budget } from '@/lib/definitions';
 import { BudgetsTable } from '@/components/budgets/BudgetsTable';
 import { BudgetDialog } from '@/components/budgets/BudgetDialog';
-import { format } from 'date-fns';
+import { useData } from '@/context/DataContext';
 
 export default function BudgetsPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<Budget | undefined>(undefined);
-
-
-  const budgetsQuery = useMemoFirebase(
-    () => (user ? query(collection(firestore, `users/${user.uid}/budgets`), orderBy('month', 'desc')) : null),
-    [firestore, user]
-  );
-
-  const { data: budgets, isLoading: loadingBudgets } = useCollection<Budget>(budgetsQuery);
+  const { budgets, isLoading } = useData();
 
   const handleAddBudget = () => {
     setSelectedBudget(undefined);
@@ -35,8 +24,6 @@ export default function BudgetsPage() {
     setDialogOpen(true);
   };
   
-  const isLoading = loadingBudgets;
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -44,6 +31,8 @@ export default function BudgetsPage() {
       </div>
     );
   }
+
+  const sortedBudgets = (budgets || []).sort((a,b) => b.month.localeCompare(a.month));
 
   return (
     <div className="flex flex-col gap-8">
@@ -54,7 +43,7 @@ export default function BudgetsPage() {
         </Button>
       </PageHeader>
 
-      <BudgetsTable budgets={budgets || []} onEdit={handleEditBudget} />
+      <BudgetsTable budgets={sortedBudgets || []} onEdit={handleEditBudget} />
 
       <BudgetDialog
         isOpen={dialogOpen}

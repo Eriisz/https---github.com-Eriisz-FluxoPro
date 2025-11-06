@@ -6,57 +6,31 @@ import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart, FutureBalanceChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
-import type { Transaction, Category, Account, Budget } from "@/lib/definitions";
-import { useCollection, useUser, useMemoFirebase, useFirestore } from '@/firebase';
-import { collection, query, where, limit, orderBy } from 'firebase/firestore';
-import { subMonths, startOfMonth, endOfMonth, format, addMonths } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { Loader } from 'lucide-react';
+import { useData } from '@/context/DataContext';
 
 
 export default function DashboardPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
-
-  const accountsQuery = useMemoFirebase(() => 
-    user ? collection(firestore, `users/${user.uid}/accounts`) : null, [firestore, user]);
-  const categoriesQuery = useMemoFirebase(() => 
-    user ? collection(firestore, `users/${user.uid}/categories`) : null, [firestore, user]);
+  const { 
+    accounts, 
+    categories, 
+    allTransactions, 
+    budgets, 
+    isLoading 
+  } = useData();
 
   const now = useMemo(() => new Date(), []);
-  const currentMonthStr = useMemo(() => format(now, 'yyyy-MM'), [now]);
   const startOfCurrentMonth = useMemo(() => startOfMonth(now), [now]);
   const endOfCurrentMonth = useMemo(() => endOfMonth(now), [now]);
   
-  // Transactions for cards and recent transactions
-  const currentMonthTransactionsQuery = useMemoFirebase(() =>
-    user ? query(
-      collection(firestore, `users/${user.uid}/transactions`),
-      where('date', '>=', startOfCurrentMonth.toISOString()),
-      where('date', '<=', endOfCurrentMonth.toISOString()),
-      orderBy('date', 'desc')
-    ) : null, [firestore, user, startOfCurrentMonth, endOfCurrentMonth]
-  );
-  
-  // All transactions for balance and charts
-  const allTransactionsQuery = useMemoFirebase(() =>
-      user ? query(
-          collection(firestore, `users/${user.uid}/transactions`),
-          orderBy('date', 'desc')
-      ) : null, [firestore, user]
-  );
-  
-  const budgetsQuery = useMemoFirebase(() =>
-    user ? query(
-      collection(firestore, `users/${user.uid}/budgets`),
-      where('month', '==', currentMonthStr)
-    ) : null,
-  [firestore, user, currentMonthStr]);
-
-  const { data: accounts, isLoading: loadingAccounts } = useCollection<Account>(accountsQuery);
-  const { data: categories, isLoading: loadingCategories } = useCollection<Category>(categoriesQuery);
-  const { data: currentMonthTransactions, isLoading: loadingCurrentMonthTransactions } = useCollection<Transaction>(currentMonthTransactionsQuery);
-  const { data: allTransactions, isLoading: loadingAllTransactions } = useCollection<Transaction>(allTransactionsQuery);
-  const { data: budgets, isLoading: loadingBudgets } = useCollection<Budget>(budgetsQuery);
+  const currentMonthTransactions = useMemo(() => {
+    if (!allTransactions) return [];
+    return allTransactions.filter(t => {
+        const tDate = new Date(t.date);
+        return tDate >= startOfCurrentMonth && tDate <= endOfCurrentMonth;
+    });
+  }, [allTransactions, startOfCurrentMonth, endOfCurrentMonth]);
 
 
   const getDashboardData = () => {
@@ -106,7 +80,8 @@ export default function DashboardPage() {
           const categoryName = category ? category.name : 'Sem Categoria';
           const categoryColor = category ? category.color : '#A9A9A9';
           return {...t, category: categoryName, categoryColor }
-      });
+      })
+      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
     const monthlyFlow = Array.from({ length: 12 }, (_, i) => {
         const monthDate = subMonths(new Date(), i);
@@ -170,7 +145,6 @@ export default function DashboardPage() {
   }
 
   const data = getDashboardData();
-  const isLoading = loadingAccounts || loadingCategories || loadingCurrentMonthTransactions || loadingAllTransactions || loadingBudgets;
   
   if (isLoading) {
       return (

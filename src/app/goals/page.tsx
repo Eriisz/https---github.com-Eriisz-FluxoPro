@@ -1,27 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Loader, PlusCircle } from 'lucide-react';
 import type { Goal } from '@/lib/definitions';
 import { GoalCard } from '@/components/goals/GoalCard';
 import { GoalDialog } from '@/components/goals/GoalDialog';
+import { useData } from '@/context/DataContext';
 
 export default function GoalsPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { goals, isLoading } = useData();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | undefined>(undefined);
-
-  const goalsQuery = useMemoFirebase(
-    () => (user ? query(collection(firestore, `users/${user.uid}/goals`), orderBy('targetDate', 'asc')) : null),
-    [firestore, user]
-  );
-
-  const { data: goals, isLoading } = useCollection<Goal>(goalsQuery);
 
   const handleAddGoal = () => {
     setSelectedGoal(undefined);
@@ -46,6 +37,8 @@ export default function GoalsPage() {
     );
   }
 
+  const sortedGoals = (goals || []).sort((a,b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime());
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Minhas Metas">
@@ -55,9 +48,9 @@ export default function GoalsPage() {
         </Button>
       </PageHeader>
       
-      {goals && goals.length > 0 ? (
+      {sortedGoals && sortedGoals.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {goals.map((goal) => (
+          {sortedGoals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} onEdit={handleEditGoal} />
           ))}
         </div>

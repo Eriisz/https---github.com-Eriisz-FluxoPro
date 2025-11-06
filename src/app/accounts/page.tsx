@@ -1,27 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Loader, PlusCircle } from 'lucide-react';
 import type { Account } from '@/lib/definitions';
 import { AccountsTable } from '@/components/accounts/AccountsTable';
 import { AccountDialog } from '@/components/accounts/AccountDialog';
+import { useData } from '@/context/DataContext';
 
 export default function AccountsPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | undefined>(undefined);
-
-  const accountsQuery = useMemoFirebase(
-    () => (user ? collection(firestore, `users/${user.uid}/accounts`) : null),
-    [firestore, user]
-  );
-
-  const { data: accounts, isLoading } = useCollection<Account>(accountsQuery);
+  const { accounts, isLoading } = useData();
 
   const handleAddAccount = () => {
     setSelectedAccount(undefined);
