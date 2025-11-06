@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DollarSign } from 'lucide-react';
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { useAuth } from '@/firebase';
+import { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -29,17 +30,23 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       // We are using a dummy domain since we are using phone number as the identifier
-      initiateEmailSignIn(auth, `${email}@fluxopro.com`, password);
+      await initiateEmailSignIn(auth, `${email}@fluxopro.com`, password);
       toast({
         title: 'Login bem-sucedido!',
         description: 'Redirecionando para o painel...',
       });
       router.push('/');
     } catch (error: any) {
+        let description = 'Ocorreu um erro desconhecido.';
+        if (error instanceof FirebaseError) {
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                description = 'Telefone ou senha inválidos.';
+            }
+        }
       toast({
         variant: 'destructive',
         title: 'Erro de Login',
-        description: 'Telefone ou senha inválidos.',
+        description: description,
       });
     }
   };
