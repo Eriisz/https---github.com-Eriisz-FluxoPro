@@ -9,11 +9,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { Transaction, Category, Account } from "@/lib/definitions";
-import { Loader, PlusCircle } from "lucide-react";
+import { Loader } from "lucide-react";
 import { useCollection, useUser, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { TransactionDialog } from '@/components/transactions/TransactionDialog';
 import { HistoryTable } from '@/components/history/HistoryTable';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
 
 export default function HistoryPage() {
   const { user } = useUser();
@@ -91,13 +93,13 @@ export default function HistoryPage() {
             isOpen={dialogOpen && !selectedTransaction}
             onOpenChange={handleDialogChange}
             trigger={
-                <button
+                <Button
                     onClick={handleAddTransaction}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2"
+                    className="w-full sm:w-auto"
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Adicionar Transação
-                </button>
+                </Button>
             }
          />
       </PageHeader>

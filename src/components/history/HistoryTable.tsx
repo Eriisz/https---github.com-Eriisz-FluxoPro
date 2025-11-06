@@ -100,10 +100,10 @@ export function HistoryTable({ transactions, onEdit }: HistoryTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Conta</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="hidden sm:table-cell">Categoria</TableHead>
+                <TableHead className="hidden md:table-cell">Conta</TableHead>
+                <TableHead className="hidden sm:table-cell">Data</TableHead>
+                <TableHead className="hidden md:table-cell">Status</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -116,10 +116,15 @@ export function HistoryTable({ transactions, onEdit }: HistoryTableProps) {
                     <TableCell>
                         <div className="flex items-center gap-3">
                         {transaction.type === 'income' ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-destructive" />}
-                        <span className="font-medium">{transaction.description}</span>
+                        <div className="flex flex-col">
+                            <span className="font-medium">{transaction.description}</span>
+                            <span className="text-xs text-muted-foreground sm:hidden">
+                                {new Date(transaction.date).toLocaleDateString("pt-BR", {timeZone: 'UTC', day: '2-digit', month: '2-digit', year: '2-digit'})} - {transaction.accountName}
+                            </span>
+                        </div>
                         </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                         <Badge
                         className="text-white"
                         style={{ backgroundColor: transaction.categoryColor }}
@@ -127,11 +132,11 @@ export function HistoryTable({ transactions, onEdit }: HistoryTableProps) {
                         {transaction.categoryName}
                         </Badge>
                     </TableCell>
-                    <TableCell>{transaction.accountName}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">{transaction.accountName}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                         {new Date(transaction.date).toLocaleDateString("pt-BR", {timeZone: 'UTC'})}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                         <Badge variant={getStatusVariant(status)}>{statusLabels[status]}</Badge>
                     </TableCell>
                     <TableCell

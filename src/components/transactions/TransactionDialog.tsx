@@ -31,7 +31,7 @@ export function TransactionDialog({ accounts, categories, transaction, isOpen, o
   const isEditing = !!transaction;
 
   const defaultTrigger = (
-    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">
       <PlusCircle className="mr-2 h-4 w-4" />
       Adicionar Transação
     </Button>
@@ -42,7 +42,7 @@ export function TransactionDialog({ accounts, categories, transaction, isOpen, o
       <DialogTrigger asChild>
         {trigger || defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Transação' : 'Adicionar Nova Transação'}</DialogTitle>
           <DialogDescription>
