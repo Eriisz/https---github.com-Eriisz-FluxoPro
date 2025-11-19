@@ -155,13 +155,9 @@ export default function DashboardPage() {
       
       <GoalsCarousel goals={data.goals} />
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <MonthlyFlowChart data={data.monthlyFlow} />
-        </div>
-        <div className="lg:col-span-2">
-          <CategoryChart data={data.categorySpending} />
-        </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <MonthlyFlowChart data={data.monthlyFlow} />
+        <CategoryChart data={data.categorySpending} />
       </div>
       <SummaryReport 
         monthlyData={data.monthlyTransactions} 
