@@ -1,15 +1,16 @@
 
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { PageHeader } from "@/components/PageHeader";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
-import { CategoryChart, MonthlyFlowChart, FutureBalanceChart } from "@/components/dashboard/Charts";
+import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
-import { subMonths, startOfMonth, endOfMonth, addMonths } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
+import { SummaryReport } from '@/components/dashboard/SummaryReport';
 
 
 export default function DashboardPage() {
@@ -25,6 +26,8 @@ export default function DashboardPage() {
   const now = useMemo(() => new Date(), []);
   const startOfCurrentMonth = useMemo(() => startOfMonth(now), [now]);
   const endOfCurrentMonth = useMemo(() => endOfMonth(now), [now]);
+  const startOfCurrentYear = useMemo(() => startOfYear(now), [now]);
+  const endOfCurrentYear = useMemo(() => endOfYear(now), [now]);
   
   const currentMonthTransactions = useMemo(() => {
     if (!allTransactions) return [];
@@ -33,6 +36,14 @@ export default function DashboardPage() {
         return tDate >= startOfCurrentMonth && tDate <= endOfCurrentMonth;
     });
   }, [allTransactions, startOfCurrentMonth, endOfCurrentMonth]);
+
+  const currentYearTransactions = useMemo(() => {
+    if (!allTransactions) return [];
+    return allTransactions.filter(t => {
+      const tDate = new Date(t.date);
+      return tDate >= startOfCurrentYear && tDate <= endOfCurrentYear;
+    });
+  }, [allTransactions, startOfCurrentYear, endOfCurrentYear]);
 
 
   const getDashboardData = () => {
@@ -101,32 +112,6 @@ export default function DashboardPage() {
         }
     }).reverse();
 
-    const futureBalance = Array.from({ length: 12 }, (_, i) => {
-        const monthDate = addMonths(startOfCurrentMonth, i);
-        const start = startOfMonth(monthDate);
-        const end = endOfMonth(monthDate);
-
-        const futureTransactions = (allTransactions || []).filter(t => {
-            const tDate = new Date(t.date);
-            return tDate >= start && tDate <= end;
-        });
-
-        const monthlyNet = futureTransactions.reduce((acc, t) => acc + t.value, 0);
-
-        return {
-            month: start.toLocaleString('pt-BR', { month: 'short' }),
-            net: monthlyNet,
-        }
-    });
-
-    let cumulativeBalance = balance;
-    const futureBalanceProjection = futureBalance.map(item => {
-        cumulativeBalance += item.net;
-        return {
-            month: item.month,
-            balance: cumulativeBalance
-        };
-    });
       
     return {
       accounts: accounts || [],
@@ -142,7 +127,8 @@ export default function DashboardPage() {
       categorySpending,
       monthlyFlow: monthlyFlow.map(d => ({ ...d, expenses: Math.abs(d.expenses) })),
       recentTransactions,
-      futureBalanceProjection,
+      monthlyTransactions: transactionsThisMonth,
+      yearlyTransactions: currentYearTransactions,
     };
   }
 
@@ -182,9 +168,11 @@ export default function DashboardPage() {
           <CategoryChart data={data.categorySpending} />
         </div>
       </div>
-        <div className="grid gap-6">
-            <FutureBalanceChart data={data.futureBalanceProjection} />
-        </div>
+      <SummaryReport 
+        monthlyData={data.monthlyTransactions} 
+        yearlyData={data.yearlyTransactions}
+        categories={data.categories}
+      />
       <RecentTransactions transactions={data.recentTransactions} />
     </div>
   );
