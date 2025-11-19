@@ -70,7 +70,7 @@ export function GoalsCarousel({ goals }: GoalsCarouselProps) {
         {goals.map((goal) => {
             const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
             return (
-                <CarouselItem key={goal.id} className="md:basis-1/2">
+                <CarouselItem key={goal.id} className="md:basis-1/2 lg:basis-1/2">
                     <div className="p-1">
                     <Card>
                         <CardHeader>
