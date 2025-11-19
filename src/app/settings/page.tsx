@@ -9,6 +9,7 @@ import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { User as UserProfile } from '@/lib/definitions';
 import { Loader } from 'lucide-react';
+import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher';
 
 export default function SettingsPage() {
   const { user } = useUser();
@@ -42,6 +43,18 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
             <ProfileForm userProfile={userProfile} />
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Aparência</CardTitle>
+                <CardDescription>
+                    Customize a aparência do aplicativo.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ThemeSwitcher />
             </CardContent>
         </Card>
 

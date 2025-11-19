@@ -25,6 +25,7 @@ import {
   LogOut,
   Loader,
   Target,
+  FileBarChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -41,7 +42,7 @@ const navItems = [
   { href: '/history', label: 'Histórico', icon: Wallet },
   { href: '/accounts', label: 'Contas', icon: Landmark },
   { href: '/categories', label: 'Categorias', icon: Tags },
-  { href: '/budgets', label: 'Orçamentos', icon: DollarSign },
+  { href: '/budgets', label: 'Orçamentos', icon: FileBarChart },
   { href: '/goals', label: 'Metas', icon: Target },
 ];
 
@@ -62,7 +63,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
 
   React.useEffect(() => {
-    // Redirect to login if user is not loaded and not on an auth page
     if (!isUserLoading && !user && !isAuthPage) {
       router.push('/login');
     }

@@ -47,7 +47,6 @@ export type Goal = {
   name: string;
   targetAmount: number;
   currentAmount: number;
-  targetDate: string; // ISO string
 };
 
 export type User = {

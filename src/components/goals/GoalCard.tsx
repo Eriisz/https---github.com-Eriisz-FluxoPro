@@ -34,8 +34,6 @@ import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 interface GoalCardProps {
   goal: Goal;
@@ -48,7 +46,7 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
   const { toast } = useToast();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
 
-  const progress = (goal.currentAmount / goal.targetAmount) * 100;
+  const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
   const remaining = goal.targetAmount - goal.currentAmount;
 
   const handleDelete = () => {
@@ -87,7 +85,7 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
             </DropdownMenu>
           </div>
           <CardDescription>
-            Alvo em {format(new Date(goal.targetDate), 'PPP', { locale: ptBR })}
+            {formatCurrency(goal.targetAmount)}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -98,7 +96,7 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
                 {formatCurrency(goal.currentAmount)}
               </span>
               <span className="text-muted-foreground">
-                {formatCurrency(goal.targetAmount)}
+                Progresso: {progress.toFixed(0)}%
               </span>
             </div>
             <p className="text-xs text-muted-foreground">

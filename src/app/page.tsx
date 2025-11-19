@@ -9,6 +9,7 @@ import { TransactionDialog } from "@/components/transactions/TransactionDialog";
 import { subMonths, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
+import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
 
 
 export default function DashboardPage() {
@@ -17,6 +18,7 @@ export default function DashboardPage() {
     categories, 
     allTransactions, 
     budgets, 
+    goals,
     isLoading 
   } = useData();
 
@@ -36,7 +38,6 @@ export default function DashboardPage() {
   const getDashboardData = () => {
     const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
     
-    // Balance considers all paid/received transactions
     const balance = (allTransactions || [])
         .filter(t => paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
@@ -130,6 +131,7 @@ export default function DashboardPage() {
     return {
       accounts: accounts || [],
       categories: categories || [],
+      goals: goals || [],
       balance,
       income,
       expenses,
@@ -169,6 +171,8 @@ export default function DashboardPage() {
         pendingIncome={data.pendingIncome}
         pendingExpenses={data.pendingExpenses}
       />
+      
+      <GoalsCarousel goals={data.goals} />
 
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-5">
         <div className="lg:col-span-3">
