@@ -60,6 +60,9 @@ export default function SettingsPage() {
 
         <ImportExport />
       </div>
+      <footer className="text-center text-sm text-muted-foreground mt-8">
+        © 2024 FluxoPro. Todos os direitos reservados para Eris dos Reis.
+      </footer>
     </div>
   );
 }
