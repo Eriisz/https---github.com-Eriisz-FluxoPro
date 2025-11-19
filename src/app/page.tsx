@@ -11,6 +11,7 @@ import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
 import { SummaryReport } from '@/components/dashboard/SummaryReport';
+import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
 
 
 export default function DashboardPage() {
@@ -23,19 +24,22 @@ export default function DashboardPage() {
     isLoading 
   } = useData();
 
-  const now = useMemo(() => new Date(), []);
-  const startOfCurrentMonth = useMemo(() => startOfMonth(now), [now]);
-  const endOfCurrentMonth = useMemo(() => endOfMonth(now), [now]);
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const startOfSelectedMonth = useMemo(() => startOfMonth(currentDate), [currentDate]);
+  const endOfSelectedMonth = useMemo(() => endOfMonth(currentDate), [currentDate]);
+
+  const now = new Date();
   const startOfCurrentYear = useMemo(() => startOfYear(now), [now]);
   const endOfCurrentYear = useMemo(() => endOfYear(now), [now]);
   
-  const currentMonthTransactions = useMemo(() => {
+  const selectedMonthTransactions = useMemo(() => {
     if (!allTransactions) return [];
     return allTransactions.filter(t => {
         const tDate = new Date(t.date);
-        return tDate >= startOfCurrentMonth && tDate <= endOfCurrentMonth;
+        return tDate >= startOfSelectedMonth && tDate <= endOfSelectedMonth;
     });
-  }, [allTransactions, startOfCurrentMonth, endOfCurrentMonth]);
+  }, [allTransactions, startOfSelectedMonth, endOfSelectedMonth]);
 
   const currentYearTransactions = useMemo(() => {
     if (!allTransactions) return [];
@@ -53,7 +57,7 @@ export default function DashboardPage() {
         .filter(t => paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
 
-    const transactionsThisMonth = currentMonthTransactions || [];
+    const transactionsThisMonth = selectedMonthTransactions || [];
     
     const income = transactionsThisMonth
         .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
@@ -86,7 +90,7 @@ export default function DashboardPage() {
       })
       .filter(c => c.total > 0);
 
-    const recentTransactions = (currentMonthTransactions || [])
+    const recentTransactions = (selectedMonthTransactions || [])
       .map(t => {
           const category = (categories || []).find(c => c.id === t.categoryId);
           const categoryName = category ? category.name : 'Sem Categoria';
@@ -127,7 +131,7 @@ export default function DashboardPage() {
       categorySpending,
       monthlyFlow: monthlyFlow.map(d => ({ ...d, expenses: Math.abs(d.expenses) })),
       recentTransactions,
-      monthlyTransactions: transactionsThisMonth,
+      monthlyTransactions: selectedMonthTransactions,
       yearlyTransactions: currentYearTransactions,
     };
   }
@@ -145,6 +149,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title="Painel de Controle">
+        <MonthYearPicker date={currentDate} onDateChange={setCurrentDate} />
         <TransactionDialog accounts={data.accounts} categories={data.categories} />
       </PageHeader>
 

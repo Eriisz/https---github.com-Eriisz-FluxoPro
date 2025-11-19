@@ -83,7 +83,7 @@ export function RecentTransactions({ transactions }: { transactions: (Transactio
         <CardHeader>
           <CardTitle>Transações Recentes</CardTitle>
           <CardDescription>
-            Suas movimentações financeiras do mês atual.
+            Suas movimentações financeiras do mês selecionado.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -160,7 +160,7 @@ export function RecentTransactions({ transactions }: { transactions: (Transactio
           </Table>
            {transactions.length === 0 && (
               <div className="text-center p-8 text-muted-foreground">
-                  Nenhuma transação encontrada para o mês atual.
+                  Nenhuma transação encontrada para o mês selecionado.
               </div>
           )}
         </CardContent>
