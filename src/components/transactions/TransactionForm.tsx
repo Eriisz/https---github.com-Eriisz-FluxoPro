@@ -40,6 +40,7 @@ import { addMonths } from 'date-fns';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { updateTransactions } from '@/lib/actions';
 import { useData } from '@/context/DataContext';
+import { AccountDialog } from '../accounts/AccountDialog';
 
 interface TransactionFormProps {
     accounts: Account[];
@@ -68,6 +69,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
   const firestore = useFirestore();
   const { toast } = useToast();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { categories, accounts, isLoading: isDataLoading } = useData();
   const isEditing = !!transaction;
@@ -165,13 +167,13 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                 finalStatus = 'PENDING';
             }
 
-            const updatedTransactionData = {
+            const updatedTransactionData: Partial<Transaction> = {
                 description: data.description,
                 value: transactionValue,
                 accountId: data.accountId,
                 categoryId: data.categoryId || '',
                 type: data.type,
-                status: finalStatus,
+                status: finalStatus as Transaction['status'],
             };
 
             const result = await updateTransactions({
@@ -389,7 +391,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
               <FormItem>
                 <FormLabel>Categoria</FormLabel>
                 <div className="flex items-center gap-2">
-                <Select onValueChange={field.onChange} value={field.value} disabled={transactionType === 'income'}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
@@ -401,11 +403,9 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                     ))}
                   </SelectContent>
                 </Select>
-                {transactionType === 'expense' && (
-                  <Button type="button" variant="ghost" size="icon" onClick={() => setCategoryDialogOpen(true)}>
-                      <PlusCircle className="h-4 w-4"/>
-                  </Button>
-                )}
+                <Button type="button" variant="ghost" size="icon" onClick={() => setCategoryDialogOpen(true)}>
+                    <PlusCircle className="h-4 w-4"/>
+                </Button>
                 </div>
                 <FormMessage />
               </FormItem>
@@ -417,18 +417,23 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Conta</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {(allAccounts || []).map(a => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {(allAccounts || []).map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setAccountDialogOpen(true)}>
+                    <PlusCircle className="h-4 w-4"/>
+                  </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -567,6 +572,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
       </form>
     </Form>
     <CategoryDialog isOpen={categoryDialogOpen} onOpenChange={setCategoryDialogOpen} category={{type: transactionType}}/>
+    <AccountDialog isOpen={accountDialogOpen} onOpenChange={setAccountDialogOpen} />
     </>
   );
 }
