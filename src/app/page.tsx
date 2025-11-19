@@ -6,7 +6,7 @@ import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
-import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
 import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
@@ -66,15 +66,9 @@ export default function DashboardPage() {
         .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
     
-    const pendingExpenses = transactionsThisMonth
-        .filter(t => t.type === 'expense' && t.status === 'PENDING')
-        .reduce((acc, t) => acc + t.value, 0);
-    
-    const pendingIncome = transactionsThisMonth
-        .filter(t => t.type === 'income' && t.status === 'PENDING')
-        .reduce((acc, t) => acc + t.value, 0);
-
-    const totalBudget = (budgets || []).reduce((acc, b) => acc + b.limit, 0);
+    const selectedMonthString = format(currentDate, 'yyyy-MM');
+    const budgetForMonth = (budgets || []).find(b => b.month === selectedMonthString);
+    const totalBudget = budgetForMonth ? budgetForMonth.limit : 0;
     
     const spentThisMonth = transactionsThisMonth
         .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
@@ -124,8 +118,6 @@ export default function DashboardPage() {
       balance,
       income,
       expenses,
-      pendingExpenses: Math.abs(pendingExpenses),
-      pendingIncome: pendingIncome,
       totalBudget: totalBudget,
       spentThisMonth: Math.abs(spentThisMonth),
       categorySpending,
@@ -159,8 +151,6 @@ export default function DashboardPage() {
         expenses={Math.abs(data.expenses)}
         budget={data.totalBudget}
         spent={data.spentThisMonth}
-        pendingIncome={data.pendingIncome}
-        pendingExpenses={data.pendingExpenses}
       />
       
       <GoalsCarousel goals={data.goals} />
