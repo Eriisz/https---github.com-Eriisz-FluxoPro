@@ -28,10 +28,6 @@ export default function DashboardPage() {
 
   const startOfSelectedMonth = useMemo(() => startOfMonth(currentDate), [currentDate]);
   const endOfSelectedMonth = useMemo(() => endOfMonth(currentDate), [currentDate]);
-
-  const now = new Date();
-  const startOfCurrentYear = useMemo(() => startOfYear(now), [now]);
-  const endOfCurrentYear = useMemo(() => endOfYear(now), [now]);
   
   const selectedMonthTransactions = useMemo(() => {
     if (!allTransactions) return [];
@@ -43,48 +39,61 @@ export default function DashboardPage() {
 
   const currentYearTransactions = useMemo(() => {
     if (!allTransactions) return [];
+    const now = new Date();
+    const startOfCurrentYear = startOfYear(now);
+    const endOfCurrentYear = endOfYear(now);
     return allTransactions.filter(t => {
       const tDate = new Date(t.date);
       return tDate >= startOfCurrentYear && tDate <= endOfCurrentYear;
     });
-  }, [allTransactions, startOfCurrentYear, endOfCurrentYear]);
+  }, [allTransactions]);
 
-
-  const getDashboardData = () => {
-    const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
-    
-    const balance = (allTransactions || [])
+  const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
+  
+  const balance = useMemo(() => {
+    return (allTransactions || [])
         .filter(t => paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
+  }, [allTransactions]);
 
-    const transactionsThisMonth = selectedMonthTransactions || [];
-    
-    const income = transactionsThisMonth
+  const income = useMemo(() => {
+    return selectedMonthTransactions
         .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
-    const expenses = transactionsThisMonth
+  }, [selectedMonthTransactions]);
+
+  const expenses = useMemo(() => {
+    return selectedMonthTransactions
         .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
-    
+  }, [selectedMonthTransactions]);
+
+  const totalBudget = useMemo(() => {
     const selectedMonthString = format(currentDate, 'yyyy-MM');
     const budgetForMonth = (budgets || []).find(b => b.month === selectedMonthString);
-    const totalBudget = budgetForMonth ? budgetForMonth.limit : 0;
-    
-    const spentThisMonth = transactionsThisMonth
+    return budgetForMonth ? budgetForMonth.limit : 0;
+  }, [budgets, currentDate]);
+  
+  const spentThisMonth = useMemo(() => {
+    return selectedMonthTransactions
         .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
-        
-    const categorySpending = (categories || [])
+  }, [selectedMonthTransactions]);
+      
+  const categorySpending = useMemo(() => {
+    return (categories || [])
       .filter(c => c.type === 'expense')
       .map(category => {
-          const total = transactionsThisMonth
+          const total = selectedMonthTransactions
               .filter(t => t.categoryId === category.id && t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
               .reduce((acc, t) => acc + Math.abs(t.value), 0);
           return { category: category.name, total, fill: category.color };
       })
       .filter(c => c.total > 0);
+  }, [categories, selectedMonthTransactions]);
 
-    const recentTransactions = (selectedMonthTransactions || [])
+  const recentTransactions = useMemo(() => {
+    return (selectedMonthTransactions || [])
       .map(t => {
           const category = (categories || []).find(c => c.id === t.categoryId);
           const categoryName = category ? category.name : 'Sem Categoria';
@@ -92,8 +101,10 @@ export default function DashboardPage() {
           return {...t, category: categoryName, categoryColor }
       })
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [selectedMonthTransactions, categories]);
       
-    const monthlyFlow = Array.from({ length: 12 }, (_, i) => {
+  const monthlyFlow = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
         const monthDate = subMonths(new Date(), i);
         const start = startOfMonth(monthDate);
         const end = endOfMonth(monthDate);
@@ -108,28 +119,9 @@ export default function DashboardPage() {
             income: monthTransactions.filter(t=> t.type === 'income').reduce((acc, t) => acc + t.value, 0),
             expenses: monthTransactions.filter(t=> t.type === 'expense').reduce((acc, t) => acc + t.value, 0)
         }
-    }).reverse();
+    }).reverse().map(d => ({ ...d, expenses: Math.abs(d.expenses) }));
+  }, [allTransactions]);
 
-      
-    return {
-      accounts: accounts || [],
-      categories: categories || [],
-      goals: goals || [],
-      balance,
-      income,
-      expenses,
-      totalBudget: totalBudget,
-      spentThisMonth: Math.abs(spentThisMonth),
-      categorySpending,
-      monthlyFlow: monthlyFlow.map(d => ({ ...d, expenses: Math.abs(d.expenses) })),
-      recentTransactions,
-      monthlyTransactions: selectedMonthTransactions,
-      yearlyTransactions: currentYearTransactions,
-    };
-  }
-
-  const data = getDashboardData();
-  
   if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -142,29 +134,29 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-8">
       <PageHeader title="Painel de Controle">
         <MonthYearPicker date={currentDate} onDateChange={setCurrentDate} />
-        <TransactionDialog accounts={data.accounts} categories={data.categories} />
+        <TransactionDialog accounts={accounts || []} categories={categories || []} />
       </PageHeader>
 
       <OverviewCards 
-        balance={data.balance}
-        income={data.income}
-        expenses={Math.abs(data.expenses)}
-        budget={data.totalBudget}
-        spent={data.spentThisMonth}
+        balance={balance}
+        income={income}
+        expenses={Math.abs(expenses)}
+        budget={totalBudget}
+        spent={Math.abs(spentThisMonth)}
       />
       
-      <GoalsCarousel goals={data.goals} />
+      <GoalsCarousel goals={goals || []} />
 
       <div className="grid gap-6 md:grid-cols-2">
-        <MonthlyFlowChart data={data.monthlyFlow} />
-        <CategoryChart data={data.categorySpending} />
+        <MonthlyFlowChart data={monthlyFlow} />
+        <CategoryChart data={categorySpending} />
       </div>
       <SummaryReport 
-        monthlyData={data.monthlyTransactions} 
-        yearlyData={data.yearlyTransactions}
-        categories={data.categories}
+        monthlyData={selectedMonthTransactions} 
+        yearlyData={currentYearTransactions}
+        categories={categories || []}
       />
-      <RecentTransactions transactions={data.recentTransactions} />
+      <RecentTransactions transactions={recentTransactions} />
     </div>
   );
 }
