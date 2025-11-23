@@ -42,7 +42,7 @@ export function TransactionDialog({ accounts, categories, transaction, isOpen, o
       <DialogTrigger asChild>
         {trigger || defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Transação' : 'Adicionar Nova Transação'}</DialogTitle>
           <DialogDescription>
