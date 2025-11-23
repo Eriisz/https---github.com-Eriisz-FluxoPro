@@ -35,10 +35,9 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Account, Category, Transaction } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
 import { addMonths } from 'date-fns';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { updateTransactions } from '@/lib/actions';
 import { useData } from '@/context/DataContext';
 import { AccountDialog } from '../accounts/AccountDialog';
 
@@ -135,6 +134,53 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
     }
   }, [transactionType, form, isEditing]);
 
+  async function handleUpdateTransactions(data: FormValues) {
+    if (!user || !transaction) return;
+
+    const transactionValue = data.type === 'expense' ? -parseFloat(data.value.replace(',', '.')) : parseFloat(data.value.replace(',', '.'));
+    let finalStatus = data.status === 'LATE' ? 'PENDING' : data.status;
+
+    const updateData = {
+        description: data.description,
+        value: transactionValue,
+        accountId: data.accountId,
+        categoryId: data.categoryId,
+        type: data.type,
+        status: finalStatus,
+    };
+    
+    const batch = writeBatch(firestore);
+
+    if (data.updateScope === 'current' || !transaction.groupId) {
+        const docRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
+        batch.update(docRef, updateData);
+    } else {
+        const originalDate = new Date(transaction.date);
+        const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
+        const q = query(transactionsCol, where('groupId', '==', transaction.groupId));
+        const querySnapshot = await getDocs(q);
+
+        querySnapshot.forEach(docSnap => {
+            const currentTransaction = docSnap.data() as Transaction;
+            const currentDate = new Date(currentTransaction.date);
+            
+            let shouldUpdate = false;
+            if (data.updateScope === 'all') {
+                shouldUpdate = true;
+            } else if (data.updateScope === 'future') {
+                shouldUpdate = currentDate.getTime() >= originalDate.getTime();
+            }
+
+            if (shouldUpdate) {
+                batch.update(docSnap.ref, updateData);
+            }
+        });
+    }
+
+    await batch.commit();
+  }
+
+
   async function onSubmit(data: FormValues) {
     if (!user) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
@@ -148,53 +194,18 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
     setIsSubmitting(true);
     
     try {
-        const category = allCategories.find(c => c.id === data.categoryId);
-        const account = allAccounts.find(a => a.id === data.accountId);
-
-        if (!category || !account) {
-            toast({ variant: 'destructive', title: 'Erro', description: 'Categoria ou conta inválida.' });
-            setIsSubmitting(false);
-            return;
-        }
-
-        const totalValue = parseFloat(data.value.replace(',', '.'));
-        const numberOfInstallments = data.frequency !== 'single' ? parseInt(data.installments || '1', 10) : 1;
-
-        if (isEditing && transaction) {
-            const transactionValue = data.type === 'expense' ? -totalValue : totalValue;
-            let finalStatus = data.status;
-            if (data.status === 'LATE') {
-                finalStatus = 'PENDING';
-            }
-
-            const updatedTransactionData: Partial<Transaction> = {
-                description: data.description,
-                value: transactionValue,
-                accountId: data.accountId,
-                categoryId: data.categoryId || '',
-                type: data.type,
-                status: finalStatus as Transaction['status'],
-            };
-
-            const result = await updateTransactions({
-                userId: user.uid,
-                transactionId: transaction.id,
-                groupId: transaction.groupId,
-                scope: data.updateScope || 'current',
-                data: updatedTransactionData,
+        if (isEditing) {
+            await handleUpdateTransactions(data);
+            toast({
+                title: "Sucesso!",
+                description: "Transação(ões) atualizada(s) com sucesso!",
             });
-
-            if (result.success) {
-                toast({
-                    title: "Sucesso!",
-                    description: "Transação(ões) atualizada(s) com sucesso!",
-                });
-            } else {
-                throw new Error(result.error || 'Falha ao atualizar transações');
-            }
         } else {
             const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
-            const groupId = numberOfInstallments > 1 ? doc(collection(firestore, '_')).id : undefined;
+            const groupId = data.frequency !== 'single' ? doc(collection(firestore, '_')).id : undefined;
+            const totalValue = parseFloat(data.value.replace(',', '.'));
+            const numberOfInstallments = data.frequency !== 'single' ? parseInt(data.installments || '1', 10) : 1;
+
 
             for (let i = 0; i < numberOfInstallments; i++) {
                 const transactionDate = addMonths(data.date, i);
