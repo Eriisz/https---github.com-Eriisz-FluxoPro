@@ -19,6 +19,7 @@ import { PlusCircle } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 export default function HistoryPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -63,6 +64,10 @@ export default function HistoryPage() {
   
   const incomeTransactions = useMemo(() => monthlyTransactions.filter(t => t.type === 'income'), [monthlyTransactions]);
   const expenseTransactions = useMemo(() => monthlyTransactions.filter(t => t.type === 'expense'), [monthlyTransactions]);
+  
+  const totalIncome = useMemo(() => incomeTransactions.reduce((acc, t) => acc + t.value, 0), [incomeTransactions]);
+  const totalExpenses = useMemo(() => expenseTransactions.reduce((acc, t) => acc + t.value, 0), [expenseTransactions]);
+
 
   if (isLoading) {
     return (
@@ -116,12 +121,14 @@ export default function HistoryPage() {
                     <HistoryTable
                         transactions={expenseTransactions}
                         onEdit={handleEditTransaction}
+                        total={totalExpenses}
                     />
                 </TabsContent>
                 <TabsContent value="income">
                     <HistoryTable
                         transactions={incomeTransactions}
                         onEdit={handleEditTransaction}
+                        total={totalIncome}
                     />
                 </TabsContent>
             </Tabs>

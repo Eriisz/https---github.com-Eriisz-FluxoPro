@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -8,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from '@/components/ui/table';
 import {
   DropdownMenu,
@@ -39,9 +41,10 @@ import { isPast, startOfToday } from 'date-fns';
 interface HistoryTableProps {
   transactions: (Transaction & { categoryName: string, categoryColor: string, accountName: string })[];
   onEdit: (transaction: Transaction) => void;
+  total?: number;
 }
 
-export function HistoryTable({ transactions, onEdit }: HistoryTableProps) {
+export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -109,7 +112,7 @@ export function HistoryTable({ transactions, onEdit }: HistoryTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((transaction) => {
+              {transactions.length > 0 ? transactions.map((transaction) => {
                 const status = getTransactionStatus(transaction);
                 return (
                     <TableRow key={transaction.id}>
@@ -173,8 +176,23 @@ export function HistoryTable({ transactions, onEdit }: HistoryTableProps) {
                     </TableCell>
                     </TableRow>
                 )
-            })}
+            }) : (
+              <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    Nenhuma transação encontrada para este período.
+                  </TableCell>
+              </TableRow>
+            )}
             </TableBody>
+             {transactions.length > 0 && total !== undefined && (
+                <TableFooter>
+                    <TableRow>
+                        <TableCell colSpan={6} className="text-right font-bold">Total</TableCell>
+                        <TableCell className="text-right font-bold">{formatCurrency(total)}</TableCell>
+                        <TableCell></TableCell>
+                    </TableRow>
+                </TableFooter>
+            )}
           </Table>
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
