@@ -140,7 +140,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
     const transactionValue = data.type === 'expense' ? -parseFloat(data.value.replace(',', '.')) : parseFloat(data.value.replace(',', '.'));
     let finalStatus = data.status === 'LATE' ? 'PENDING' : data.status;
 
-    const updateData = {
+    const updateData: any = {
         description: data.description,
         value: transactionValue,
         accountId: data.accountId,
@@ -153,6 +153,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
 
     if (data.updateScope === 'current' || !transaction.groupId) {
         const docRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
+        updateData.date = data.date.toISOString();
         batch.update(docRef, updateData);
     } else {
         const originalDate = new Date(transaction.date);
@@ -466,6 +467,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                           "w-full pl-3 text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
+                        disabled={isEditing && !!transaction?.groupId && form.getValues('updateScope') !== 'current'}
                       >
                         {field.value ? (
                           format(field.value, "PPP", { locale: ptBR })
@@ -481,7 +483,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={isEditing}
                       initialFocus
                       locale={ptBR}
                     />
