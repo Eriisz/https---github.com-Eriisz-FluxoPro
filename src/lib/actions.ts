@@ -67,10 +67,10 @@ export async function updateTransactions(input: UpdateTransactionsInput): Promis
 
                     if (shouldUpdate) {
                         // Apply the new data but preserve the original date and installment info
-                        const updatedData = {
-                            ...data, // Overwrite with new data from form
-                        };
-                        batch.update(docSnap.ref, updatedData);
+                        // We must remove the 'installments' field from the update data,
+                        // as it's part of the original document structure and should not be changed.
+                        const { installments, ...updateData } = data;
+                        batch.update(docSnap.ref, updateData);
                     }
                 });
             }
