@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -31,7 +31,11 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import React from "react";
 import { useData } from "@/context/DataContext";
 
-export function RecentTransactions({ transactions }: { transactions: (Transaction & {categoryColor: string})[] }) {
+interface RecentTransactionsProps {
+  transactions: Transaction[];
+}
+
+export function RecentTransactions({ transactions: rawTransactions }: RecentTransactionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
@@ -42,6 +46,15 @@ export function RecentTransactions({ transactions }: { transactions: (Transactio
   const firestore = useFirestore();
   const { toast } = useToast();
   const { accounts, categories } = useData();
+
+  const transactions = useMemo(() => {
+    return (rawTransactions || []).map(t => {
+      const category = (categories || []).find(c => c.id === t.categoryId);
+      const categoryName = category ? category.name : 'Sem Categoria';
+      const categoryColor = category ? category.color : '#A9A9A9';
+      return {...t, categoryName, categoryColor }
+    });
+  }, [rawTransactions, categories]);
 
   const visibleTransactions = transactions.slice(0, 5);
   const hiddenTransactions = transactions.slice(5);
@@ -114,9 +127,9 @@ export function RecentTransactions({ transactions }: { transactions: (Transactio
                   <TableCell className="hidden sm:table-cell">
                     <Badge
                       className="text-white"
-                      style={{ backgroundColor: transaction.categoryColor }}
+                      style={{ backgroundColor: (transaction as any).categoryColor }}
                     >
-                      {transaction.category}
+                      {(transaction as any).categoryName}
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">

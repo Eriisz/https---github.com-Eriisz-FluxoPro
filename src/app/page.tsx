@@ -94,14 +94,8 @@ export default function DashboardPage() {
 
   const recentTransactions = useMemo(() => {
     return (selectedMonthTransactions || [])
-      .map(t => {
-          const category = (categories || []).find(c => c.id === t.categoryId);
-          const categoryName = category ? category.name : 'Sem Categoria';
-          const categoryColor = category ? category.color : '#A9A9A9';
-          return {...t, category: categoryName, categoryColor }
-      })
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [selectedMonthTransactions, categories]);
+  }, [selectedMonthTransactions]);
       
   const monthlyFlow = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {

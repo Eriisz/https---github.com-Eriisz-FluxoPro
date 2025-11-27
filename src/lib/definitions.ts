@@ -3,9 +3,7 @@ export type Transaction = {
   userId: string;
   value: number;
   date: string; // ISO string
-  category: string; // Name of the category for display
   categoryId: string; // ID of the category for relations
-  account: string; // Name of the account for display
   accountId: string; // ID of the account for relations
   description: string;
   groupId?: string | null;
@@ -47,6 +45,7 @@ export type Goal = {
   name: string;
   targetAmount: number;
   currentAmount: number;
+  targetDate: string; // ISO string
 };
 
 export type User = {

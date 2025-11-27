@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -70,7 +69,9 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
   };
 
   const getTransactionStatus = (transaction: Transaction) => {
-    if (transaction.status === 'PENDING' && isPast(new Date(transaction.date)) && new Date(transaction.date) < startOfToday()) {
+    const transactionDate = new Date(transaction.date);
+    // A transaction is late if its date is in the past AND it's not from today
+    if (transaction.status === 'PENDING' && isPast(transactionDate) && transactionDate < startOfToday()) {
         return 'LATE';
     }
     return transaction.status;

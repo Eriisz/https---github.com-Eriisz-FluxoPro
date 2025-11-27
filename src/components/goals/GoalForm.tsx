@@ -4,6 +4,9 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { CalendarIcon } from 'lucide-react';
 
 import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -20,11 +23,15 @@ import { useToast } from '@/hooks/use-toast';
 import type { Goal } from '@/lib/definitions';
 import { doc, collection } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
   targetAmount: z.string().refine(v => !isNaN(parseFloat(v)), { message: 'Valor alvo inválido.'}),
   currentAmount: z.string().refine(v => !isNaN(parseFloat(v)), { message: 'Valor atual inválido.'}),
+  targetDate: z.date({ required_error: 'Data alvo é obrigatória.'}),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -46,6 +53,7 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
       name: existingGoal?.name || '',
       targetAmount: String(existingGoal?.targetAmount || ''),
       currentAmount: String(existingGoal?.currentAmount || '0'),
+      targetDate: existingGoal ? new Date(existingGoal.targetDate) : new Date(),
     },
   });
 
@@ -58,12 +66,13 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
     const id = existingGoal?.id || doc(collection(firestore, '_')).id;
     const goalRef = doc(firestore, `users/${user.uid}/goals`, id);
 
-    const goalData = {
+    const goalData: Goal = {
       id,
       userId: user.uid,
       name: data.name,
       targetAmount: parseFloat(data.targetAmount.replace(',', '.')),
       currentAmount: parseFloat(data.currentAmount.replace(',', '.')),
+      targetDate: data.targetDate.toISOString(),
     };
 
     setDocumentNonBlocking(goalRef, goalData, { merge: true });
@@ -115,6 +124,45 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
               <FormControl>
                 <Input type="text" placeholder="0,00" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="targetDate"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Data Alvo</FormLabel>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value ? (
+                        format(field.value, "PPP", { locale: ptBR })
+                      ) : (
+                        <span>Escolha uma data</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    initialFocus
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
               <FormMessage />
             </FormItem>
           )}

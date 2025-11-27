@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, CalendarIcon } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency } from '@/lib/utils';
 import type { Goal } from '@/lib/definitions';
@@ -34,6 +34,8 @@ import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface GoalCardProps {
   goal: Goal;
@@ -106,6 +108,10 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
             </p>
           </div>
         </CardContent>
+        <CardFooter className="flex justify-start items-center text-xs text-muted-foreground gap-2">
+            <CalendarIcon className="w-4 h-4"/>
+            <span>Data Alvo: {format(new Date(goal.targetDate), 'dd/MM/yyyy')}</span>
+        </CardFooter>
       </Card>
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
