@@ -1,6 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowDownCircle, ArrowUpCircle, DollarSign, Ban } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, DollarSign, Ban, Info } from "lucide-react";
 
 type OverviewCardsProps = {
     balance: number;
@@ -8,9 +8,10 @@ type OverviewCardsProps = {
     expenses: number;
     budget: number;
     spent: number;
+    isCurrentMonth: boolean;
 }
 
-export function OverviewCards({ balance, income, expenses, budget, spent }: OverviewCardsProps) {
+export function OverviewCards({ balance, income, expenses, budget, spent, isCurrentMonth }: OverviewCardsProps) {
   const remainingBudget = budget - spent;
   
   return (
@@ -20,10 +21,18 @@ export function OverviewCards({ balance, income, expenses, budget, spent }: Over
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Saldo Atual
           </CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          {isCurrentMonth ? (
+             <DollarSign className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <Info className="h-4 w-4 text-muted-foreground" />
+          )}
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
+          {isCurrentMonth ? (
+            <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
+          ) : (
+             <div className="text-sm font-semibold">Consolidado</div>
+          )}
           <p className="text-xs text-muted-foreground">
             Balanço total de todas as contas
           </p>

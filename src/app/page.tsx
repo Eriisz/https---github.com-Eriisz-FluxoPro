@@ -6,7 +6,7 @@ import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
-import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format, isSameMonth } from 'date-fns';
 import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
@@ -28,6 +28,7 @@ export default function DashboardPage() {
 
   const startOfSelectedMonth = useMemo(() => startOfMonth(currentDate), [currentDate]);
   const endOfSelectedMonth = useMemo(() => endOfMonth(currentDate), [currentDate]);
+  const isCurrentMonth = useMemo(() => isSameMonth(currentDate, new Date()), [currentDate]);
   
   const selectedMonthTransactions = useMemo(() => {
     if (!allTransactions) return [];
@@ -137,6 +138,7 @@ export default function DashboardPage() {
         expenses={Math.abs(expenses)}
         budget={totalBudget}
         spent={Math.abs(spentThisMonth)}
+        isCurrentMonth={isCurrentMonth}
       />
       
       <GoalsCarousel goals={goals || []} />
