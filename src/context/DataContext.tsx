@@ -57,10 +57,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const { data: allTransactions, isLoading: loadingAllTransactions } = useCollection<Transaction>(allTransactionsQuery);
 
   const isLoading =
-    loadingAccounts ||
-    loadingCategories ||
-    loadingBudgets ||
-    loadingGoals ||
+    loadingAccounts &&
+    loadingCategories &&
+    loadingBudgets &&
+    loadingGoals &&
     loadingAllTransactions;
     
   const value = {
@@ -74,8 +74,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataContext.Provider value={value}>
-        {/* We add this check to ensure we dont show a FOUC of the child components before the user is authenticated and the data is available */}
-        {isLoading && !accounts ? (
+        {isLoading ? (
              <div className="flex items-center justify-center h-full min-h-screen">
                 <Loader className="w-8 h-8 animate-spin" />
             </div>
