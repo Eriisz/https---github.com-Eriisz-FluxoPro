@@ -33,9 +33,19 @@ const formSchema = z.object({
   type: z.enum(['ContaCorrente', 'CartaoCredito', 'Investimento', 'Outro'], {
     required_error: 'Selecione um tipo de conta.',
   }),
-  initialBalance: z.string().optional(),
+  balance: z.string().optional(),
   limit: z.string().optional(),
+}).refine(data => {
+    // Balance is required if it is not a credit card
+    if (data.type !== 'CartaoCredito' && !data.balance) {
+      return false;
+    }
+    return true;
+  }, {
+    message: 'Saldo inicial é obrigatório para este tipo de conta.',
+    path: ['balance'],
 });
+
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -55,12 +65,18 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     defaultValues: {
       name: existingAccount?.name || '',
       type: existingAccount?.type || 'ContaCorrente',
-      initialBalance: String(existingAccount?.balance || '0.00'),
+      balance: String(existingAccount?.balance || '0.00'),
       limit: String(existingAccount?.limit || ''),
     },
   });
 
   const accountType = form.watch('type');
+
+  useEffect(() => {
+    if (accountType === 'CartaoCredito' && !isEditing) {
+        form.setValue('balance', '0');
+    }
+  }, [accountType, form, isEditing])
 
   async function onSubmit(data: FormValues) {
     if (!user) {
@@ -71,14 +87,14 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     const id = existingAccount?.id || doc(collection(firestore, '_')).id;
     const accountRef = doc(firestore, `users/${user.uid}/accounts`, id);
 
-    const balanceValue = data.initialBalance ? parseFloat(data.initialBalance.replace(',', '.')) : 0;
+    const balanceValue = data.balance ? parseFloat(data.balance.replace(',', '.')) : 0;
     
     const accountData = {
       id,
       userId: user.uid,
       name: data.name,
       type: data.type,
-      ...(isEditing ? {} : { balance: balanceValue }),
+      balance: balanceValue,
       ...(data.type === 'CartaoCredito' && data.limit ? { limit: parseFloat(data.limit.replace(',', '.')) } : { limit: null }),
     };
     
@@ -116,7 +132,7 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipo de Conta</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditing}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo" />
@@ -134,16 +150,17 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
           )}
         />
 
-        {!isEditing && accountType !== 'CartaoCredito' && (
+        {accountType !== 'CartaoCredito' && (
             <FormField
             control={form.control}
-            name="initialBalance"
+            name="balance"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Saldo Inicial (Opcional)</FormLabel>
+                <FormLabel>Saldo</FormLabel>
                 <FormControl>
-                    <Input type="text" placeholder="0,00" {...field} />
+                    <Input type="text" placeholder="0,00" {...field} disabled={isEditing} />
                 </FormControl>
+                {isEditing && <p className="text-xs text-muted-foreground">O saldo é atualizado automaticamente pelas transações.</p>}
                 <FormMessage />
                 </FormItem>
             )}

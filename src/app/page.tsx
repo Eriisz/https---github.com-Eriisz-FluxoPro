@@ -52,10 +52,11 @@ export default function DashboardPage() {
   const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
   
   const balance = useMemo(() => {
-    return (allTransactions || [])
-        .filter(t => paidOrReceivedStatuses.includes(t.status))
-        .reduce((acc, t) => acc + t.value, 0);
-  }, [allTransactions]);
+    // Balance is the sum of all accounts balances, except credit cards.
+    return (accounts || [])
+        .filter(a => a.type !== 'CartaoCredito')
+        .reduce((acc, a) => acc + a.balance, 0);
+  }, [accounts]);
 
   const income = useMemo(() => {
     return selectedMonthTransactions
@@ -78,7 +79,7 @@ export default function DashboardPage() {
   const spentThisMonth = useMemo(() => {
     return selectedMonthTransactions
         .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
-        .reduce((acc, t) => acc + t.value, 0);
+        .reduce((acc, t) => acc + Math.abs(t.value), 0);
   }, [selectedMonthTransactions]);
       
   const categorySpending = useMemo(() => {
@@ -126,7 +127,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col flex-1 gap-8">
       <PageHeader title="Painel de Controle">
         <MonthYearPicker date={currentDate} onDateChange={setCurrentDate} />
         <TransactionDialog accounts={accounts || []} categories={categories || []} />
