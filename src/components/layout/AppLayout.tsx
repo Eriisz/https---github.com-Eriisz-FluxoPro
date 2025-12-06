@@ -26,6 +26,7 @@ import {
   Loader,
   Target,
   FileBarChart,
+  Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -44,6 +45,7 @@ const navItems = [
   { href: '/categories', label: 'Categorias', icon: Tags },
   { href: '/budgets', label: 'Orçamentos', icon: FileBarChart },
   { href: '/goals', label: 'Metas', icon: Target },
+  { href: '/calculators', label: 'Calculadoras', icon: Calculator },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
