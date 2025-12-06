@@ -39,7 +39,6 @@ import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/fir
 import { addMonths } from 'date-fns';
 import { useData } from '@/context/DataContext';
 import { AccountDialog } from '../accounts/AccountDialog';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { revalidateDashboard } from '@/lib/actions';
 
 
@@ -136,15 +135,14 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
       categoryId: data.categoryId,
       type: data.type,
       status: finalStatus,
-      date: data.date.toISOString(),
     };
   
     if (data.updateScope === 'current' || !transaction.groupId) {
       const docRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
-      batch.update(docRef, updateData);
+      batch.update(docRef, {...updateData, date: data.date.toISOString()});
     } else {
       // For recurring/installment, we only update some fields, preserving original date and installment count
-      const { date, ...restOfUpdateData } = updateData;
+      const { ...restOfUpdateData } = updateData;
 
       const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
       const q = query(transactionsCol, where('groupId', '==', transaction.groupId));
@@ -323,7 +321,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                   }}
                   defaultValue={field.value}
                   className="flex justify-center space-x-4"
-                  disabled={isEditing && !!transaction?.groupId}
+                  disabled={isEditing}
                 >
                   <FormItem className="flex items-center space-x-2 space-y-0">
                     <FormControl>
@@ -461,6 +459,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                           "w-full pl-3 text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
+                         disabled={isEditing && !!transaction?.groupId && form.getValues('updateScope') !== 'current'}
                       >
                         {field.value ? (
                           format(field.value, "PPP", { locale: ptBR })

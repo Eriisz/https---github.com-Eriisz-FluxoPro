@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -24,6 +25,7 @@ import { doc, collection } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calculator } from '../shared/Calculator';
+import { revalidateDashboard } from '@/lib/actions';
 
 const formSchema = z.object({
   limit: z.string().min(1, 'Limite é obrigatório.'),
@@ -68,6 +70,7 @@ export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
     };
 
     setDocumentNonBlocking(budgetRef, budgetData, { merge: true });
+    await revalidateDashboard();
     
     toast({
         title: 'Sucesso!',

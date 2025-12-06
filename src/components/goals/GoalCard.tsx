@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -36,6 +37,7 @@ import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { revalidateDashboard } from '@/lib/actions';
 
 interface GoalCardProps {
   goal: Goal;
@@ -51,10 +53,11 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
   const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
   const remaining = goal.targetAmount - goal.currentAmount;
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!user) return;
     const goalRef = doc(firestore, `users/${user.uid}/goals`, goal.id);
     deleteDocumentNonBlocking(goalRef);
+    await revalidateDashboard();
     toast({ title: 'Sucesso!', description: 'Meta deletada com sucesso.' });
     setIsAlertOpen(false);
   };

@@ -10,4 +10,8 @@ import { revalidatePath } from "next/cache";
 export async function revalidateDashboard() {
     revalidatePath('/');
     revalidatePath('/history');
+    revalidatePath('/accounts');
+    revalidatePath('/categories');
+    revalidatePath('/budgets');
+    revalidatePath('/goals');
 }

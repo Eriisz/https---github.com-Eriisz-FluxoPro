@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -26,6 +27,7 @@ import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
+import { revalidateDashboard } from '@/lib/actions';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
@@ -76,6 +78,7 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
     };
 
     setDocumentNonBlocking(goalRef, goalData, { merge: true });
+    await revalidateDashboard();
     
     toast({
         title: 'Sucesso!',

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -33,6 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
 import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { revalidateDashboard } from '@/lib/actions';
 
 interface CategoriesTableProps {
   categories: Category[];
@@ -55,6 +57,7 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
     if (user && categoryToDelete) {
       const categoryRef = doc(firestore, `users/${user.uid}/categories`, categoryToDelete.id);
       deleteDocumentNonBlocking(categoryRef);
+      await revalidateDashboard();
       toast({
         title: 'Sucesso!',
         description: 'Categoria deletada com sucesso.',

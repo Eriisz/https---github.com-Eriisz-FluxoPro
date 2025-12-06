@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -35,6 +36,7 @@ import { format, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { revalidateDashboard } from '@/lib/actions';
 
 interface BudgetsTableProps {
   budgets: Budget[];
@@ -57,6 +59,7 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
     if (user && budgetToDelete) {
       const budgetRef = doc(firestore, `users/${user.uid}/budgets`, budgetToDelete.id);
       deleteDocumentNonBlocking(budgetRef);
+      await revalidateDashboard();
       toast({
         title: 'Sucesso!',
         description: 'Orçamento deletado com sucesso.',

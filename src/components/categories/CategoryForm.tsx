@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -21,6 +22,7 @@ import type { Category } from '@/lib/definitions';
 import { doc, collection } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { revalidateDashboard } from '@/lib/actions';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
@@ -68,6 +70,7 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
     };
 
     setDocumentNonBlocking(categoryRef, categoryData, { merge: true });
+    await revalidateDashboard();
 
     toast({
         title: 'Sucesso!',
