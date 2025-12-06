@@ -1,6 +1,11 @@
+
+'use client';
+
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowDownCircle, ArrowUpCircle, DollarSign, Ban, Info } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, DollarSign, Ban, Info, RefreshCw } from "lucide-react";
+import { Button } from '../ui/button';
 
 type OverviewCardsProps = {
     balance: number;
@@ -9,11 +14,17 @@ type OverviewCardsProps = {
     budget: number;
     spent: number;
     showBalance: boolean;
+    pendingExpenses: number;
 }
 
-export function OverviewCards({ balance, income, expenses, budget, spent, showBalance }: OverviewCardsProps) {
+export function OverviewCards({ balance, income, expenses, budget, spent, showBalance, pendingExpenses }: OverviewCardsProps) {
+  const [budgetView, setBudgetView] = useState<'budget' | 'pending'>('budget');
   const remainingBudget = budget - spent;
   
+  const toggleBudgetView = () => {
+    setBudgetView(prev => prev === 'budget' ? 'pending' : 'budget');
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
@@ -71,16 +82,33 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Orçamento Restante</CardTitle>
-          <Ban className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {budgetView === 'budget' ? 'Orçamento Restante' : 'Necessário para Quitar'}
+          </CardTitle>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={toggleBudgetView}>
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className={`text-2xl font-bold ${remainingBudget >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-            {formatCurrency(remainingBudget)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(spent)} de {formatCurrency(budget)} gastos
-          </p>
+          {budgetView === 'budget' ? (
+            <>
+              <div className={`text-2xl font-bold ${remainingBudget >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                {formatCurrency(remainingBudget)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(spent)} de {formatCurrency(budget)} gastos
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold text-destructive">
+                {formatCurrency(pendingExpenses)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Soma das despesas pendentes/atrasadas
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

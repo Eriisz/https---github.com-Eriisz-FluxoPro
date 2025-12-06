@@ -136,6 +136,12 @@ export default function DashboardPage() {
     return isSameMonth(today, currentDate) && isSameYear(today, currentDate);
   }, [currentDate]);
 
+  const pendingExpenses = useMemo(() => {
+    return selectedMonthTransactions
+      .filter(t => t.type === 'expense' && (t.status === 'PENDING' || t.status === 'LATE'))
+      .reduce((acc, t) => acc + Math.abs(t.value), 0);
+  }, [selectedMonthTransactions]);
+
   if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -158,6 +164,7 @@ export default function DashboardPage() {
         budget={totalBudget}
         spent={spentThisMonth}
         showBalance={isCurrentMonth}
+        pendingExpenses={pendingExpenses}
       />
       
       <GoalsCarousel goals={goals || []} />
