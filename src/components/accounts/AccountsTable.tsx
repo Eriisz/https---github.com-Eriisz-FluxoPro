@@ -67,7 +67,7 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
             t => t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
         );
         const totalFromTransactions = transactionsForAccount.reduce((acc, t) => acc + t.value, 0);
-        balances.set(account.id, account.initialBalance + totalFromTransactions);
+        balances.set(account.id, (account.initialBalance || 0) + totalFromTransactions);
     });
     return balances;
   }, [accounts, allTransactions]);

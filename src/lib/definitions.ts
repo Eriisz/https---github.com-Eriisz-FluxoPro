@@ -21,7 +21,7 @@ export type Account = {
   name: string;
   type: 'ContaCorrente' | 'CartaoCredito' | 'Investimento' | 'Outro';
   initialBalance: number;
-  limit?: number;
+  limit?: number | null;
 };
 
 export type Category = {

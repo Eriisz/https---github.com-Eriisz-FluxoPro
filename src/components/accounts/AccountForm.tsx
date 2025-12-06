@@ -39,8 +39,7 @@ const formSchema = z.object({
   initialBalance: z.string().optional(),
   limit: z.string().optional(),
 }).refine(data => {
-    // Balance is required if it is not a credit card
-    if (data.type !== 'CartaoCredito' && (data.initialBalance === undefined || data.initialBalance === '')) {
+    if (data.type !== 'CartaoCredito' && (data.initialBalance === undefined || data.initialBalance.trim() === '')) {
       return false;
     }
     return true;
@@ -68,7 +67,7 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     defaultValues: {
       name: existingAccount?.name || '',
       type: existingAccount?.type || 'ContaCorrente',
-      initialBalance: String(existingAccount?.initialBalance || '0.00'),
+      initialBalance: String(existingAccount?.initialBalance ?? '0.00'),
       limit: String(existingAccount?.limit || ''),
     },
   });
@@ -90,16 +89,22 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     const id = existingAccount?.id || doc(collection(firestore, '_')).id;
     const accountRef = doc(firestore, `users/${user.uid}/accounts`, id);
 
-    const initialBalanceValue = data.initialBalance ? parseFloat(data.initialBalance.replace(',', '.')) : 0;
-    
-    const accountData = {
+    let initialBalanceValue = 0;
+    if (data.initialBalance) {
+        initialBalanceValue = parseFloat(data.initialBalance.replace(',', '.'));
+    }
+
+    const accountData: Partial<Account> = {
       id,
       userId: user.uid,
       name: data.name,
       type: data.type,
       initialBalance: initialBalanceValue,
-      ...(data.type === 'CartaoCredito' && data.limit ? { limit: parseFloat(data.limit.replace(',', '.')) } : { limit: null }),
     };
+
+    if (data.type === 'CartaoCredito') {
+        accountData.limit = data.limit ? parseFloat(data.limit.replace(',', '.')) : 0;
+    }
     
     setDocumentNonBlocking(accountRef, accountData, { merge: true });
     await revalidateDashboard();

@@ -8,9 +8,10 @@ type OverviewCardsProps = {
     expenses: number;
     budget: number;
     spent: number;
+    showBalance: boolean;
 }
 
-export function OverviewCards({ balance, income, expenses, budget, spent }: OverviewCardsProps) {
+export function OverviewCards({ balance, income, expenses, budget, spent, showBalance }: OverviewCardsProps) {
   const remainingBudget = budget - spent;
   
   return (
@@ -23,10 +24,21 @@ export function OverviewCards({ balance, income, expenses, budget, spent }: Over
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
-          <p className="text-xs text-muted-foreground">
-            Soma dos saldos de todas as contas
-          </p>
+          {showBalance ? (
+            <>
+              <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
+              <p className="text-xs text-muted-foreground">
+                Soma dos saldos de todas as contas
+              </p>
+            </>
+          ) : (
+             <div className="flex flex-col items-center justify-center h-full text-center">
+                <Info className="h-6 w-6 text-muted-foreground mb-2" />
+                <p className="text-xs text-muted-foreground">
+                    O saldo consolidado é exibido apenas para o mês atual.
+                </p>
+            </div>
+          )}
         </CardContent>
       </Card>
       <Card>

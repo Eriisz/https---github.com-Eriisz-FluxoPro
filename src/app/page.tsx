@@ -6,7 +6,7 @@ import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
-import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format, isSameMonth, isSameYear } from 'date-fns';
 import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
@@ -59,7 +59,7 @@ export default function DashboardPage() {
         const accountTransactions = allTransactions.filter(
           t => t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
         );
-        const accountBalance = accountTransactions.reduce((sum, t) => sum + t.value, account.initialBalance);
+        const accountBalance = accountTransactions.reduce((sum, t) => sum + t.value, account.initialBalance || 0);
         return total + accountBalance;
       }, 0);
   }, [accounts, allTransactions]);
@@ -126,6 +126,11 @@ export default function DashboardPage() {
     }).reverse().map(d => ({ ...d, expenses: Math.abs(d.expenses) }));
   }, [allTransactions]);
 
+  const isCurrentMonth = useMemo(() => {
+    const today = new Date();
+    return isSameMonth(today, currentDate) && isSameYear(today, currentDate);
+  }, [currentDate]);
+
   if (isLoading) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -147,6 +152,7 @@ export default function DashboardPage() {
         expenses={Math.abs(expenses)}
         budget={totalBudget}
         spent={Math.abs(spentThisMonth)}
+        showBalance={isCurrentMonth}
       />
       
       <GoalsCarousel goals={goals || []} />
