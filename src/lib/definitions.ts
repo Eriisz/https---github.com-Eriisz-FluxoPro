@@ -20,7 +20,7 @@ export type Account = {
   userId: string;
   name: string;
   type: 'ContaCorrente' | 'CartaoCredito' | 'Investimento' | 'Outro';
-  balance: number;
+  initialBalance: number;
   limit?: number;
 };
 
@@ -54,4 +54,5 @@ export type User = {
     phoneNumber: string;
     createdAt: string;
 }
+    
     

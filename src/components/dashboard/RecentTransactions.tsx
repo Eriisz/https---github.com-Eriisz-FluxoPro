@@ -30,6 +30,7 @@ import { TransactionDialog } from "../transactions/TransactionDialog";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "../ui/alert-dialog";
 import React from "react";
 import { useData } from "@/context/DataContext";
+import { revalidateDashboard } from "@/lib/actions";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -68,6 +69,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
     if (user && transactionToDelete) {
       const transactionRef = doc(firestore, `users/${user.uid}/transactions`, transactionToDelete.id);
       deleteDocumentNonBlocking(transactionRef);
+      await revalidateDashboard();
       toast({
         title: 'Sucesso!',
         description: 'Transação deletada com sucesso.',
@@ -146,10 +148,10 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
                     className={`text-right font-medium ${
                       transaction.type === "income"
                         ? "text-primary"
-                        : ""
+                        : "text-destructive"
                     }`}
                   >
-                    {transaction.type === 'income' ? formatCurrency(transaction.value) : formatCurrency(transaction.value)}
+                    {transaction.type === 'expense' ? `-${formatCurrency(Math.abs(transaction.value))}`: formatCurrency(transaction.value)}
                   </TableCell>
                   <TableCell>
                       <DropdownMenu>
@@ -222,3 +224,5 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
     </>
   );
 }
+
+    

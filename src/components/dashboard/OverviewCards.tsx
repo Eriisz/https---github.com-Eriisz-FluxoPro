@@ -8,10 +8,9 @@ type OverviewCardsProps = {
     expenses: number;
     budget: number;
     spent: number;
-    isCurrentMonth: boolean;
 }
 
-export function OverviewCards({ balance, income, expenses, budget, spent, isCurrentMonth }: OverviewCardsProps) {
+export function OverviewCards({ balance, income, expenses, budget, spent }: OverviewCardsProps) {
   const remainingBudget = budget - spent;
   
   return (
@@ -19,22 +18,14 @@ export function OverviewCards({ balance, income, expenses, budget, spent, isCurr
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Saldo Atual
+            Saldo Consolidado
           </CardTitle>
-          {isCurrentMonth ? (
-             <DollarSign className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <Info className="h-4 w-4 text-muted-foreground" />
-          )}
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          {isCurrentMonth ? (
-            <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
-          ) : (
-             <div className="text-sm font-semibold">Consolidado</div>
-          )}
+          <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
           <p className="text-xs text-muted-foreground">
-            Balanço total de todas as contas
+            Soma dos saldos de todas as contas
           </p>
         </CardContent>
       </Card>
@@ -48,7 +39,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, isCurr
         <CardContent>
           <div className="text-2xl font-bold text-primary">{formatCurrency(income)}</div>
           <p className="text-xs text-muted-foreground">
-            Total de receitas no mês atual
+            Total de receitas no mês selecionado
           </p>
         </CardContent>
       </Card>
@@ -62,7 +53,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, isCurr
         <CardContent>
           <div className="text-2xl font-bold text-destructive">{formatCurrency(expenses)}</div>
            <p className="text-xs text-muted-foreground">
-            Total de despesas no mês atual
+            Total de despesas no mês selecionado
           </p>
         </CardContent>
       </Card>
@@ -83,3 +74,5 @@ export function OverviewCards({ balance, income, expenses, budget, spent, isCurr
     </div>
   );
 }
+
+    

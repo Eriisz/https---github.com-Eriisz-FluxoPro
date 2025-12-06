@@ -6,7 +6,7 @@ import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
-import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format, isSameMonth } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
 import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
@@ -28,7 +28,6 @@ export default function DashboardPage() {
 
   const startOfSelectedMonth = useMemo(() => startOfMonth(currentDate), [currentDate]);
   const endOfSelectedMonth = useMemo(() => endOfMonth(currentDate), [currentDate]);
-  const isCurrentMonth = useMemo(() => isSameMonth(currentDate, new Date()), [currentDate]);
   
   const selectedMonthTransactions = useMemo(() => {
     if (!allTransactions) return [];
@@ -51,12 +50,20 @@ export default function DashboardPage() {
 
   const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
   
-  const balance = useMemo(() => {
-    // Balance is the sum of all accounts balances, except credit cards.
-    return (accounts || [])
-        .filter(a => a.type !== 'CartaoCredito')
-        .reduce((acc, a) => acc + a.balance, 0);
-  }, [accounts]);
+  const totalBalance = useMemo(() => {
+    if (!accounts || !allTransactions) return 0;
+
+    return accounts
+      .filter(acc => acc.type !== 'CartaoCredito')
+      .reduce((total, account) => {
+        const accountTransactions = allTransactions.filter(
+          t => t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
+        );
+        const accountBalance = accountTransactions.reduce((sum, t) => sum + t.value, account.initialBalance);
+        return total + accountBalance;
+      }, 0);
+  }, [accounts, allTransactions]);
+
 
   const income = useMemo(() => {
     return selectedMonthTransactions
@@ -100,6 +107,7 @@ export default function DashboardPage() {
   }, [selectedMonthTransactions]);
       
   const monthlyFlow = useMemo(() => {
+    if (!allTransactions) return [];
     return Array.from({ length: 12 }, (_, i) => {
         const monthDate = subMonths(new Date(), i);
         const start = startOfMonth(monthDate);
@@ -134,12 +142,11 @@ export default function DashboardPage() {
       </PageHeader>
 
       <OverviewCards 
-        balance={balance}
+        balance={totalBalance}
         income={income}
         expenses={Math.abs(expenses)}
         budget={totalBudget}
         spent={Math.abs(spentThisMonth)}
-        isCurrentMonth={isCurrentMonth}
       />
       
       <GoalsCarousel goals={goals || []} />
@@ -157,3 +164,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

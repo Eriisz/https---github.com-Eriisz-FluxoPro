@@ -37,6 +37,7 @@ import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Badge } from '../ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { isPast, startOfToday } from 'date-fns';
+import { revalidateDashboard } from '@/lib/actions';
 
 interface HistoryTableProps {
   transactions: (Transaction & { categoryName: string, categoryColor: string, accountName: string })[];
@@ -60,6 +61,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
     if (user && transactionToDelete) {
       const transactionRef = doc(firestore, `users/${user.uid}/transactions`, transactionToDelete.id);
       deleteDocumentNonBlocking(transactionRef);
+      await revalidateDashboard();
       toast({
         title: 'Sucesso!',
         description: 'Transação deletada com sucesso.',
@@ -157,7 +159,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
                             : "text-destructive"
                         }`}
                     >
-                        {formatCurrency(transaction.value)}
+                        {transaction.type === 'expense' ? `-${formatCurrency(Math.abs(transaction.value))}`: formatCurrency(transaction.value)}
                     </TableCell>
                     <TableCell>
                         <DropdownMenu>
@@ -195,7 +197,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
              {transactions.length > 0 && total !== undefined && (
                 <TableFooter>
                     <TableRow>
-                        <TableCell colSpan={6} className="text-right font-bold">Total</TableCell>
+                        <TableCell colSpan={5} className="text-right font-bold">Total</TableCell>
                         <TableCell className="text-right font-bold">{formatCurrency(total)}</TableCell>
                         <TableCell></TableCell>
                     </TableRow>
@@ -223,3 +225,5 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
     </>
   );
 }
+
+    

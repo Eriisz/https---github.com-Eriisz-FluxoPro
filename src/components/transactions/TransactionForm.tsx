@@ -35,10 +35,13 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Account, Category, Transaction } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
-import { collection, doc, writeBatch, getDocs, query, where, runTransaction, increment } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
 import { addMonths } from 'date-fns';
 import { useData } from '@/context/DataContext';
 import { AccountDialog } from '../accounts/AccountDialog';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { revalidateDashboard } from '@/lib/actions';
+
 
 interface TransactionFormProps {
     accounts: Account[];
@@ -125,45 +128,10 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
   
     const batch = writeBatch(firestore);
   
-    // Calculate the difference in value
-    const newValue = data.type === 'expense' ? -parseFloat(data.value.replace(',', '.')) : parseFloat(data.value.replace(',', '.'));
-    const valueDifference = newValue - transaction.value;
-  
-    // Handle account balance change only for the current transaction's change
-    const paidOrReceived = ['PAID', 'RECEIVED'].includes(data.status);
-    const wasPaidOrReceived = ['PAID', 'RECEIVED'].includes(transaction.status);
-  
-    if (paidOrReceived) {
-      if (transaction.accountId === data.accountId) {
-        // Value or status change on the same account
-        if (wasPaidOrReceived) {
-          const accountRef = doc(firestore, `users/${user.uid}/accounts`, data.accountId);
-          batch.update(accountRef, { balance: increment(valueDifference) });
-        } else {
-          // Status changed to paid/received
-          const accountRef = doc(firestore, `users/${user.uid}/accounts`, data.accountId);
-          batch.update(accountRef, { balance: increment(newValue) });
-        }
-      } else {
-        // Account changed
-        if(wasPaidOrReceived) {
-            const oldAccountRef = doc(firestore, `users/${user.uid}/accounts`, transaction.accountId);
-            batch.update(oldAccountRef, { balance: increment(-transaction.value) });
-        }
-
-        const newAccountRef = doc(firestore, `users/${user.uid}/accounts`, data.accountId);
-        batch.update(newAccountRef, { balance: increment(newValue) });
-      }
-    } else if (wasPaidOrReceived) {
-      // Status changed from paid/received to pending/late, so we revert the original value
-      const accountRef = doc(firestore, `users/${user.uid}/accounts`, transaction.accountId);
-      batch.update(accountRef, { balance: increment(-transaction.value) });
-    }
-  
     let finalStatus = data.status === 'LATE' ? 'PENDING' : data.status;
     const updateData: any = {
       description: data.description,
-      value: newValue,
+      value: data.type === 'expense' ? -parseFloat(data.value.replace(',', '.')) : parseFloat(data.value.replace(',', '.')),
       accountId: data.accountId,
       categoryId: data.categoryId,
       type: data.type,
@@ -175,7 +143,9 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
       const docRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
       batch.update(docRef, updateData);
     } else {
-      const originalDate = new Date(transaction.date);
+      // For recurring/installment, we only update some fields, preserving original date and installment count
+      const { date, ...restOfUpdateData } = updateData;
+
       const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
       const q = query(transactionsCol, where('groupId', '==', transaction.groupId));
       const querySnapshot = await getDocs(q);
@@ -188,11 +158,11 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
         if (data.updateScope === 'all') {
           shouldUpdate = true;
         } else if (data.updateScope === 'future') {
+          const originalDate = new Date(transaction.date);
           shouldUpdate = currentDate.getTime() >= originalDate.getTime();
         }
   
         if (shouldUpdate) {
-          const { date, ...restOfUpdateData } = updateData;
           batch.update(docSnap.ref, restOfUpdateData);
         }
       });
@@ -228,9 +198,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
             const totalValue = parseFloat(data.value.replace(',', '.'));
             const numberOfInstallments = data.frequency !== 'single' ? parseInt(data.installments || '1', 10) : 1;
 
-            const paidOrReceived = ['PAID', 'RECEIVED'].includes(data.status);
-            let totalBalanceChange = 0;
-
             for (let i = 0; i < numberOfInstallments; i++) {
                 const transactionDate = addMonths(data.date, i);
                 
@@ -246,11 +213,9 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                     finalStatus = 'PENDING';
                 }
 
-                if (paidOrReceived) {
-                    totalBalanceChange += transactionValue;
-                }
-
-                const newTransactionData: Omit<Transaction, 'id'> = {
+                const transactionId = doc(collection(firestore, '_')).id;
+                const newTransactionData: Transaction = {
+                    id: transactionId,
                     userId: user.uid,
                     description: data.description,
                     value: transactionValue,
@@ -262,13 +227,8 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                     ...(groupId && { groupId }),
                     ...(numberOfInstallments > 1 && { installments: { current: i + 1, total: numberOfInstallments } }),
                 };
-                const newDocRef = doc(transactionsCol);
+                const newDocRef = doc(transactionsCol, transactionId);
                 batch.set(newDocRef, newTransactionData);
-            }
-
-            if(paidOrReceived && totalBalanceChange !== 0) {
-                const accountRef = doc(firestore, `users/${user.uid}/accounts`, data.accountId);
-                batch.update(accountRef, { balance: increment(totalBalanceChange) });
             }
             
             await batch.commit();
@@ -279,7 +239,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
             });
         }
 
-
+        await revalidateDashboard();
         form.reset();
         onFormSubmit();
 
@@ -363,7 +323,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                   }}
                   defaultValue={field.value}
                   className="flex justify-center space-x-4"
-                  disabled={isEditing}
+                  disabled={isEditing && !!transaction?.groupId}
                 >
                   <FormItem className="flex items-center space-x-2 space-y-0">
                     <FormControl>
@@ -501,7 +461,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                           "w-full pl-3 text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
-                        disabled={isEditing && !!transaction?.groupId}
                       >
                         {field.value ? (
                           format(field.value, "PPP", { locale: ptBR })
@@ -522,7 +481,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                     />
                   </PopoverContent>
                 </Popover>
-                {isEditing && !!transaction?.groupId && <FormMessage>A data de transações recorrentes não pode ser alterada.</FormMessage>}
                 <FormMessage />
               </FormItem>
             )}
@@ -549,7 +507,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                         <>
                           <SelectItem value="PAID">Pago</SelectItem>
                           <SelectItem value="PENDING">Pendente</SelectItem>
-                          <SelectItem value="LATE">Atrasado</SelectItem>
                         </>
                       )}
                     </SelectContent>
@@ -605,7 +562,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                 <FormItem>
                 <FormLabel>{transactionFrequency === 'installment' ? 'Número de Parcelas' : 'Número de Meses'}</FormLabel>
                 <FormControl>
-                    <Input type="number" placeholder="Ex: 12" {...field} disabled={isEditing} />
+                    <Input type="number" placeholder="Ex: 12" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -623,3 +580,5 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
     </>
   );
 }
+
+    

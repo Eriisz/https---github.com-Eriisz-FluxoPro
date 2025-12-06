@@ -1,6 +1,7 @@
+
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -27,13 +28,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import type { Account } from '@/lib/definitions';
+import type { Account, Transaction } from '@/lib/definitions';
 import { formatCurrency } from '@/lib/utils';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
 import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useData } from '@/context/DataContext';
+import { revalidateDashboard } from '@/lib/actions';
 
 interface AccountsTableProps {
   accounts: Account[];
@@ -47,12 +50,28 @@ const accountTypeLabels: { [key: string]: string } = {
     'Outro': 'Outro'
 }
 
+const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
+
 export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
+  const [isAlertOpen, React.useState(false);
   const [accountToDelete, setAccountToDelete] = React.useState<Account | null>(null);
+  const { allTransactions } = useData();
+
+  const accountBalances = useMemo(() => {
+    const balances = new Map<string, number>();
+    accounts.forEach(account => {
+        const transactionsForAccount = (allTransactions || []).filter(
+            t => t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
+        );
+        const totalFromTransactions = transactionsForAccount.reduce((acc, t) => acc + t.value, 0);
+        balances.set(account.id, account.initialBalance + totalFromTransactions);
+    });
+    return balances;
+  }, [accounts, allTransactions]);
+
 
   const handleDeleteClick = (account: Account) => {
     setAccountToDelete(account);
@@ -63,6 +82,7 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
     if (user && accountToDelete) {
       const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountToDelete.id);
       deleteDocumentNonBlocking(accountRef);
+      await revalidateDashboard();
       toast({
         title: 'Sucesso!',
         description: 'Conta deletada com sucesso.',
@@ -95,7 +115,7 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
                   <TableCell className="text-right">
                     {account.type === 'CartaoCredito'
                       ? `Limite: ${formatCurrency(account.limit || 0)}`
-                      : formatCurrency(account.balance)}
+                      : formatCurrency(accountBalances.get(account.id) || 0)}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -153,3 +173,5 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
     </>
   );
 }
+
+    

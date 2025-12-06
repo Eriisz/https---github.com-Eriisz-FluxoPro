@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -27,23 +28,25 @@ import { useToast } from '@/hooks/use-toast';
 import type { Account } from '@/lib/definitions';
 import { doc, collection } from 'firebase/firestore';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { revalidateDashboard } from '@/lib/actions';
+
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
   type: z.enum(['ContaCorrente', 'CartaoCredito', 'Investimento', 'Outro'], {
     required_error: 'Selecione um tipo de conta.',
   }),
-  balance: z.string().optional(),
+  initialBalance: z.string().optional(),
   limit: z.string().optional(),
 }).refine(data => {
     // Balance is required if it is not a credit card
-    if (data.type !== 'CartaoCredito' && !data.balance) {
+    if (data.type !== 'CartaoCredito' && (data.initialBalance === undefined || data.initialBalance === '')) {
       return false;
     }
     return true;
   }, {
     message: 'Saldo inicial é obrigatório para este tipo de conta.',
-    path: ['balance'],
+    path: ['initialBalance'],
 });
 
 
@@ -65,7 +68,7 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     defaultValues: {
       name: existingAccount?.name || '',
       type: existingAccount?.type || 'ContaCorrente',
-      balance: String(existingAccount?.balance || '0.00'),
+      initialBalance: String(existingAccount?.initialBalance || '0.00'),
       limit: String(existingAccount?.limit || ''),
     },
   });
@@ -74,7 +77,7 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
 
   useEffect(() => {
     if (accountType === 'CartaoCredito' && !isEditing) {
-        form.setValue('balance', '0');
+        form.setValue('initialBalance', '0');
     }
   }, [accountType, form, isEditing])
 
@@ -87,18 +90,19 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     const id = existingAccount?.id || doc(collection(firestore, '_')).id;
     const accountRef = doc(firestore, `users/${user.uid}/accounts`, id);
 
-    const balanceValue = data.balance ? parseFloat(data.balance.replace(',', '.')) : 0;
+    const initialBalanceValue = data.initialBalance ? parseFloat(data.initialBalance.replace(',', '.')) : 0;
     
     const accountData = {
       id,
       userId: user.uid,
       name: data.name,
       type: data.type,
-      balance: balanceValue,
+      initialBalance: initialBalanceValue,
       ...(data.type === 'CartaoCredito' && data.limit ? { limit: parseFloat(data.limit.replace(',', '.')) } : { limit: null }),
     };
     
     setDocumentNonBlocking(accountRef, accountData, { merge: true });
+    await revalidateDashboard();
     
     toast({
         title: 'Sucesso!',
@@ -153,14 +157,14 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
         {accountType !== 'CartaoCredito' && (
             <FormField
             control={form.control}
-            name="balance"
+            name="initialBalance"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Saldo</FormLabel>
+                <FormLabel>Saldo Inicial</FormLabel>
                 <FormControl>
-                    <Input type="text" placeholder="0,00" {...field} disabled={isEditing} />
+                    <Input type="text" placeholder="0,00" {...field} />
                 </FormControl>
-                {isEditing && <p className="text-xs text-muted-foreground">O saldo é atualizado automaticamente pelas transações.</p>}
+                <p className="text-xs text-muted-foreground">Este é o ponto de partida. O saldo atual será calculado com base nas transações.</p>
                 <FormMessage />
                 </FormItem>
             )}
@@ -190,3 +194,5 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     </Form>
   );
 }
+
+    
