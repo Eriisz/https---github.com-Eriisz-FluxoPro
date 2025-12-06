@@ -147,13 +147,13 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
         categoryId: data.categoryId,
         type: data.type,
         status: finalStatus,
+        date: data.date.toISOString(),
     };
     
     const batch = writeBatch(firestore);
 
     if (data.updateScope === 'current' || !transaction.groupId) {
         const docRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
-        updateData.date = data.date.toISOString();
         batch.update(docRef, updateData);
     } else {
         const originalDate = new Date(transaction.date);
@@ -173,7 +173,9 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
             }
 
             if (shouldUpdate) {
-                batch.update(docSnap.ref, updateData);
+                // Don't update date for batch updates to preserve individual due dates
+                const { date, ...restOfUpdateData } = updateData;
+                batch.update(docSnap.ref, restOfUpdateData);
             }
         });
     }
@@ -467,7 +469,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                           "w-full pl-3 text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
-                        disabled={isEditing && !!transaction?.groupId && form.getValues('updateScope') !== 'current'}
                       >
                         {field.value ? (
                           format(field.value, "PPP", { locale: ptBR })
@@ -536,7 +537,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                   onValueChange={field.onChange}
                   defaultValue={field.value}
                   className="flex space-x-4"
-                  disabled={isEditing}
                 >
                   <FormItem className="flex items-center space-x-2 space-y-0">
                     <FormControl>
