@@ -63,7 +63,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
           <ArrowDownCircle className="h-4 w-4 text-destructive" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-destructive">{formatCurrency(expenses)}</div>
+          <div className="text-2xl font-bold text-destructive">{formatCurrency(Math.abs(expenses))}</div>
            <p className="text-xs text-muted-foreground">
             Total de despesas no mês selecionado
           </p>

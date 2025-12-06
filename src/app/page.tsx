@@ -52,16 +52,16 @@ export default function DashboardPage() {
   
   const totalBalance = useMemo(() => {
     if (!accounts || !allTransactions) return 0;
-
-    return accounts
+  
+    const totalInitialBalance = accounts
       .filter(acc => acc.type !== 'CartaoCredito')
-      .reduce((total, account) => {
-        const accountTransactions = allTransactions.filter(
-          t => t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
-        );
-        const accountBalance = accountTransactions.reduce((sum, t) => sum + t.value, account.initialBalance || 0);
-        return total + accountBalance;
-      }, 0);
+      .reduce((sum, acc) => sum + (acc.initialBalance || 0), 0);
+  
+    const totalTransactionValue = allTransactions
+      .filter(t => paidOrReceivedStatuses.includes(t.status) && accounts.some(acc => acc.id === t.accountId && acc.type !== 'CartaoCredito'))
+      .reduce((sum, t) => sum + t.value, 0);
+      
+    return totalInitialBalance + totalTransactionValue;
   }, [accounts, allTransactions]);
 
 
@@ -149,9 +149,9 @@ export default function DashboardPage() {
       <OverviewCards 
         balance={totalBalance}
         income={income}
-        expenses={Math.abs(expenses)}
+        expenses={expenses}
         budget={totalBudget}
-        spent={Math.abs(spentThisMonth)}
+        spent={spentThisMonth}
         showBalance={isCurrentMonth}
       />
       
