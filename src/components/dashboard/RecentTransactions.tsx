@@ -117,7 +117,14 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
                     <div className="flex items-center gap-3">
                        {transaction.type === 'income' ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-destructive" />}
                       <div>
-                        <div className="font-medium">{transaction.description}</div>
+                        <div className="font-medium">
+                          {transaction.description}
+                          {transaction.installments && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              ({transaction.installments.current}/{transaction.installments.total})
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-muted-foreground md:hidden">
                           {new Date(transaction.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' })}
                         </div>

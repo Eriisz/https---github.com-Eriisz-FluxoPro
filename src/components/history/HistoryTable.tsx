@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -70,7 +71,6 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
 
   const getTransactionStatus = (transaction: Transaction) => {
     const transactionDate = new Date(transaction.date);
-    // A transaction is late if its date is in the past AND it's not from today
     if (transaction.status === 'PENDING' && isPast(transactionDate) && transactionDate < startOfToday()) {
         return 'LATE';
     }
@@ -121,7 +121,14 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
                         <div className="flex items-center gap-3">
                         {transaction.type === 'income' ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-destructive" />}
                         <div className="flex flex-col">
-                            <span className="font-medium">{transaction.description}</span>
+                            <span className="font-medium">
+                              {transaction.description}
+                              {transaction.installments && (
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  ({transaction.installments.current}/{transaction.installments.total})
+                                </span>
+                              )}
+                            </span>
                             <span className="text-xs text-muted-foreground sm:hidden">
                                 {new Date(transaction.date).toLocaleDateString("pt-BR", {timeZone: 'UTC', day: '2-digit', month: '2-digit', year: '2-digit'})} - {transaction.accountName}
                             </span>
