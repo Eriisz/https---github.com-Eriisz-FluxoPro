@@ -56,7 +56,7 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const [isAlertOpen, React.useState(false);
+  const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [accountToDelete, setAccountToDelete] = React.useState<Account | null>(null);
   const { allTransactions } = useData();
 
