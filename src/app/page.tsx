@@ -53,15 +53,20 @@ export default function DashboardPage() {
   const totalBalance = useMemo(() => {
     if (!accounts || !allTransactions) return 0;
   
-    const totalInitialBalance = accounts
-      .filter(acc => acc.type !== 'CartaoCredito')
-      .reduce((sum, acc) => sum + (acc.initialBalance || 0), 0);
+    // Calculate the final balance for each non-credit-card account
+    const nonCreditCardAccounts = accounts.filter(acc => acc.type !== 'CartaoCredito');
+    const accountBalances = nonCreditCardAccounts.map(account => {
+        const transactionsForAccount = allTransactions.filter(t => 
+            t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
+        );
+        const totalFromTransactions = transactionsForAccount.reduce((sum, t) => sum + t.value, 0);
+        return (account.initialBalance || 0) + totalFromTransactions;
+    });
+
+    // Sum the final balances of all non-credit-card accounts
+    const totalFromAccounts = accountBalances.reduce((sum, balance) => sum + balance, 0);
   
-    const totalTransactionValue = allTransactions
-      .filter(t => paidOrReceivedStatuses.includes(t.status) && accounts.some(acc => acc.id === t.accountId && acc.type !== 'CartaoCredito'))
-      .reduce((sum, t) => sum + t.value, 0);
-      
-    return totalInitialBalance + totalTransactionValue;
+    return totalFromAccounts;
   }, [accounts, allTransactions]);
 
 
