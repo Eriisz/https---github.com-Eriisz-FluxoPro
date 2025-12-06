@@ -179,7 +179,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           </header>
           <SidebarInset>
-            <main className="flex-1 p-4 md:p-8">{children}</main>
+            <main className="flex flex-col flex-1 p-4 md:p-8">{children}</main>
           </SidebarInset>
         </div>
       </div>
