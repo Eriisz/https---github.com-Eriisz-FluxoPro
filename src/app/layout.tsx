@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FirebaseClientProvider } from '@/firebase';
 import { DataProvider } from '@/context/DataContext';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'FluxoPro - Gestão Financeira PRO',
@@ -48,6 +49,7 @@ export default function RootLayout({
           </DataProvider>
           <Toaster />
         </FirebaseClientProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
