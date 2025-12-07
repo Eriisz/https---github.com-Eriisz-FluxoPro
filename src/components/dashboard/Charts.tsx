@@ -17,12 +17,26 @@ import {
   ChartLegendContent,
 } from "@/components/ui/chart"
 import { formatCurrency } from "@/lib/utils"
+import { useData } from "@/context/DataContext"
 
 // Gastos por Categoria (Gráfico de Rosca)
 export function CategoryChart({ data }: { data: { category: string, total: number, fill: string }[] }) {
+  const { isBalanceVisible } = useData();
   const chartConfig = Object.fromEntries(
     data.map(item => [item.category, { label: item.category, color: item.fill }])
   );
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="p-2 text-sm bg-background border rounded-md shadow-lg">
+          <p className="font-bold">{`${payload[0].name}`}</p>
+          <p className="text-primary">{isBalanceVisible ? formatCurrency(payload[0].value) : '•••••'}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <Card className="flex flex-col h-full">
@@ -38,7 +52,7 @@ export function CategoryChart({ data }: { data: { category: string, total: numbe
           <PieChart>
             <RechartsTooltip 
                 cursor={false}
-                content={<ChartTooltipContent hideLabel formatter={(value) => formatCurrency(Number(value))} />}
+                content={<CustomTooltip />}
              />
             <Pie
               data={data}
@@ -46,6 +60,7 @@ export function CategoryChart({ data }: { data: { category: string, total: numbe
               nameKey="category"
               innerRadius={60}
               strokeWidth={5}
+              label={isBalanceVisible ? undefined : () => ''}
             >
               {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -64,10 +79,13 @@ export function CategoryChart({ data }: { data: { category: string, total: numbe
 
 // Fluxo de Caixa Mensal (Gráfico de Barras)
 export function MonthlyFlowChart({ data }: { data: any[] }) {
+  const { isBalanceVisible } = useData();
   const chartConfig = {
     income: { label: "Receitas", color: "hsl(var(--chart-1))" },
     expenses: { label: "Despesas", color: "hsl(var(--destructive))" },
   }
+
+  const valueFormatter = (value: number) => isBalanceVisible ? formatCurrency(value) : '•••••';
 
   return (
     <Card className="h-full">
@@ -88,7 +106,7 @@ export function MonthlyFlowChart({ data }: { data: any[] }) {
             />
              <RechartsTooltip 
                 cursor={false}
-                content={<ChartTooltipContent formatter={(value) => formatCurrency(Number(value))} />}
+                content={<ChartTooltipContent formatter={(value) => isBalanceVisible ? formatCurrency(Number(value)) : '•••••'} />}
             />
             <ChartLegend content={<ChartLegendContent />} />
             <Bar dataKey="income" fill="hsl(var(--chart-1))" radius={4} />

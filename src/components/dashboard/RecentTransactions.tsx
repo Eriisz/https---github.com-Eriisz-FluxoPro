@@ -46,7 +46,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { accounts, categories } = useData();
+  const { accounts, categories, isBalanceVisible } = useData();
 
   const transactions = useMemo(() => {
     return (rawTransactions || []).map(t => {
@@ -151,7 +151,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
                         : "text-destructive"
                     }`}
                   >
-                    {transaction.type === 'expense' ? `-${formatCurrency(Math.abs(transaction.value))}`: formatCurrency(transaction.value)}
+                    {isBalanceVisible ? (transaction.type === 'expense' ? `-${formatCurrency(Math.abs(transaction.value))}`: formatCurrency(transaction.value)) : '•••••'}
                   </TableCell>
                   <TableCell>
                       <DropdownMenu>

@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Account, Category, Budget, Goal, Transaction } from '@/lib/definitions';
@@ -13,6 +14,8 @@ interface DataContextProps {
   goals: Goal[] | null;
   allTransactions: Transaction[] | null;
   isLoading: boolean;
+  isBalanceVisible: boolean;
+  toggleBalanceVisibility: () => void;
 }
 
 const DataContext = createContext<DataContextProps | undefined>(undefined);
@@ -20,6 +23,22 @@ const DataContext = createContext<DataContextProps | undefined>(undefined);
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+
+  useEffect(() => {
+    const storedVisibility = localStorage.getItem('isBalanceVisible');
+    if (storedVisibility !== null) {
+      setIsBalanceVisible(JSON.parse(storedVisibility));
+    }
+  }, []);
+
+  const toggleBalanceVisibility = useCallback(() => {
+    setIsBalanceVisible(prev => {
+        const newState = !prev;
+        localStorage.setItem('isBalanceVisible', JSON.stringify(newState));
+        return newState;
+    });
+  }, []);
 
   // Accounts
   const accountsQuery = useMemoFirebase(
@@ -70,6 +89,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     goals,
     allTransactions,
     isLoading,
+    isBalanceVisible,
+    toggleBalanceVisibility,
   };
 
   return (

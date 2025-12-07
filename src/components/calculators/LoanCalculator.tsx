@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useData } from '@/context/DataContext';
 
 const formSchema = z.object({
   loanAmount: z.string().min(1, 'Obrigatório'),
@@ -36,6 +37,7 @@ interface CalculationResult {
 
 export function LoanCalculator() {
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const { isBalanceVisible } = useData();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -79,6 +81,9 @@ export function LoanCalculator() {
     });
   }
 
+  const hiddenValue = '•••••';
+  const valueFormatter = (value: number) => isBalanceVisible ? formatCurrency(value) : hiddenValue;
+
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -96,7 +101,7 @@ export function LoanCalculator() {
                   <FormItem>
                     <FormLabel>Valor do Financiamento (R$)</FormLabel>
                     <FormControl>
-                      <Input type="text" placeholder="50000,00" {...field} />
+                      <Input type={isBalanceVisible ? 'text' : 'password'} placeholder="50000,00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -135,15 +140,15 @@ export function LoanCalculator() {
               <div className="space-y-4">
                 <div className="space-y-2 text-center border p-6 rounded-lg bg-muted">
                     <p className="text-sm text-muted-foreground">Valor da Parcela Mensal</p>
-                    <p className="text-3xl font-bold text-primary">{formatCurrency(result.monthlyPayment)}</p>
+                    <p className="text-3xl font-bold text-primary">{valueFormatter(result.monthlyPayment)}</p>
                      <div className="grid grid-cols-2 gap-4 pt-4 text-sm">
                         <div className="text-left">
                             <p className="text-muted-foreground">Total Pago</p>
-                            <p className="font-semibold">{formatCurrency(result.totalPaid)}</p>
+                            <p className="font-semibold">{valueFormatter(result.totalPaid)}</p>
                         </div>
                         <div className="text-right">
                             <p className="text-muted-foreground">Total em Juros</p>
-                            <p className="font-semibold">{formatCurrency(result.totalInterest)}</p>
+                            <p className="font-semibold">{valueFormatter(result.totalInterest)}</p>
                         </div>
                    </div>
                 </div>
@@ -162,9 +167,9 @@ export function LoanCalculator() {
                             {result.amortizationSchedule.map(row => (
                                 <TableRow key={row.month}>
                                     <TableCell>{row.month}</TableCell>
-                                    <TableCell>{formatCurrency(row.interest)}</TableCell>
-                                    <TableCell>{formatCurrency(row.principal)}</TableCell>
-                                    <TableCell>{formatCurrency(row.balance)}</TableCell>
+                                    <TableCell>{valueFormatter(row.interest)}</TableCell>
+                                    <TableCell>{valueFormatter(row.principal)}</TableCell>
+                                    <TableCell>{valueFormatter(row.balance)}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

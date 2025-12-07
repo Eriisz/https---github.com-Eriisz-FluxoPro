@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
 import { TrendingUp } from 'lucide-react';
+import { useData } from '@/context/DataContext';
 
 const formSchema = z.object({
   presentValue: z.string().min(1, 'Obrigatório'),
@@ -30,6 +31,7 @@ interface CalculationResult {
 
 export function FutureValueCalculator() {
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const { isBalanceVisible } = useData();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,6 +73,8 @@ export function FutureValueCalculator() {
     });
   }
 
+  const hiddenValue = '•••••';
+
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -88,7 +92,7 @@ export function FutureValueCalculator() {
                   <FormItem>
                     <FormLabel>Valor Presente (R$)</FormLabel>
                     <FormControl>
-                      <Input type="text" placeholder="10000,00" {...field} />
+                      <Input type={isBalanceVisible ? 'text' : 'password'} placeholder="10000,00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -173,10 +177,10 @@ export function FutureValueCalculator() {
                 <div className="space-y-4 text-center border p-8 rounded-lg bg-muted w-full">
                     <TrendingUp className="mx-auto h-12 w-12 text-primary" />
                     <p className="text-sm text-muted-foreground">Valor Futuro do Investimento</p>
-                    <p className="text-4xl font-bold text-primary">{formatCurrency(result.futureValue)}</p>
+                    <p className="text-4xl font-bold text-primary">{isBalanceVisible ? formatCurrency(result.futureValue) : hiddenValue}</p>
                     <div className="pt-4 text-center">
                         <p className="text-muted-foreground">Total em Juros</p>
-                        <p className="font-semibold text-lg">{formatCurrency(result.totalInterest)}</p>
+                        <p className="font-semibold text-lg">{isBalanceVisible ? formatCurrency(result.totalInterest) : hiddenValue}</p>
                     </div>
                 </div>
               </div>

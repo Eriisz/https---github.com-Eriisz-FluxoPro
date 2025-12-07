@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useData } from '@/context/DataContext';
 
 const formSchema = z.object({
   initialAmount: z.string().min(1, 'Obrigatório'),
@@ -32,6 +33,7 @@ interface CalculationResult {
 
 export function InvestmentCalculator() {
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const { isBalanceVisible } = useData();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -73,6 +75,9 @@ export function InvestmentCalculator() {
     });
   }
 
+  const hiddenValue = '•••••';
+  const valueFormatter = (value: number) => isBalanceVisible ? formatCurrency(value) : hiddenValue;
+
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -90,7 +95,7 @@ export function InvestmentCalculator() {
                   <FormItem>
                     <FormLabel>Valor Inicial (R$)</FormLabel>
                     <FormControl>
-                      <Input type="text" placeholder="1000,00" {...field} />
+                      <Input type={isBalanceVisible ? 'text' : 'password'} placeholder="1000,00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -103,7 +108,7 @@ export function InvestmentCalculator() {
                   <FormItem>
                     <FormLabel>Depósito Mensal (R$)</FormLabel>
                     <FormControl>
-                      <Input type="text" placeholder="500,00" {...field} />
+                      <Input type={isBalanceVisible ? 'text' : 'password'} placeholder="500,00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -166,15 +171,15 @@ export function InvestmentCalculator() {
                 <div className="space-y-2 text-center border p-6 rounded-lg bg-muted">
                   <h3 className="text-lg font-semibold">Resultado</h3>
                   <p className="text-sm text-muted-foreground">Valor Acumulado</p>
-                  <p className="text-3xl font-bold text-primary">{formatCurrency(result.totalAccumulated)}</p>
+                  <p className="text-3xl font-bold text-primary">{isBalanceVisible ? formatCurrency(result.totalAccumulated) : hiddenValue}</p>
                    <div className="grid grid-cols-2 gap-4 pt-4 text-sm">
                         <div className="text-left">
                             <p className="text-muted-foreground">Total Investido</p>
-                            <p className="font-semibold">{formatCurrency(result.totalInvested)}</p>
+                            <p className="font-semibold">{isBalanceVisible ? formatCurrency(result.totalInvested) : hiddenValue}</p>
                         </div>
                         <div className="text-right">
                             <p className="text-muted-foreground">Total em Juros</p>
-                            <p className="font-semibold">{formatCurrency(result.totalInterest)}</p>
+                            <p className="font-semibold">{isBalanceVisible ? formatCurrency(result.totalInterest) : hiddenValue}</p>
                         </div>
                    </div>
                 </div>
@@ -183,8 +188,8 @@ export function InvestmentCalculator() {
                         <BarChart data={result.monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" label={{ value: "Meses", position: "insideBottom", offset: -5 }}/>
-                        <YAxis tickFormatter={(value) => formatCurrency(value as number)} />
-                        <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                        <YAxis tickFormatter={(value) => valueFormatter(value as number)} />
+                        <Tooltip formatter={(value) => valueFormatter(value as number)} />
                         <Legend />
                         <Bar dataKey="value" name="Valor Acumulado" fill="hsl(var(--primary))" />
                         </BarChart>

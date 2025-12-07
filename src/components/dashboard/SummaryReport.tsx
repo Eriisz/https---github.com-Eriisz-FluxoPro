@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Category, Transaction } from '@/lib/definitions';
 import { formatCurrency } from '@/lib/utils';
 import { ArrowDownCircle, ArrowUpCircle, Scale } from 'lucide-react';
+import { useData } from '@/context/DataContext';
 
 interface SummaryReportProps {
   monthlyData: Transaction[];
@@ -66,8 +67,10 @@ function getTopSpendingCategories(transactions: Transaction[], categories: Categ
 }
 
 const SummaryTab = ({ title, data, categories }: { title: string, data: Transaction[], categories: Category[] }) => {
+  const { isBalanceVisible } = useData();
   const { income, expenses, net } = calculateSummary(data);
   const topSpending = getTopSpendingCategories(data, categories);
+  const hiddenValue = '•••••';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -78,7 +81,7 @@ const SummaryTab = ({ title, data, categories }: { title: string, data: Transact
             <ArrowUpCircle className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatCurrency(income)}</div>
+            <div className="text-2xl font-bold text-primary">{isBalanceVisible ? formatCurrency(income) : hiddenValue}</div>
           </CardContent>
         </Card>
          <Card className="bg-muted/30">
@@ -87,7 +90,7 @@ const SummaryTab = ({ title, data, categories }: { title: string, data: Transact
             <ArrowDownCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{formatCurrency(expenses)}</div>
+            <div className="text-2xl font-bold text-destructive">{isBalanceVisible ? formatCurrency(expenses) : hiddenValue}</div>
           </CardContent>
         </Card>
          <Card className="bg-muted/30">
@@ -97,7 +100,7 @@ const SummaryTab = ({ title, data, categories }: { title: string, data: Transact
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${net >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                {formatCurrency(net)}
+                {isBalanceVisible ? formatCurrency(net) : hiddenValue}
             </div>
           </CardContent>
         </Card>
@@ -118,7 +121,7 @@ const SummaryTab = ({ title, data, categories }: { title: string, data: Transact
                                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }}/>
                                     <span className="font-medium">{item.name}</span>
                                 </div>
-                                <span className="font-semibold">{formatCurrency(item.total)}</span>
+                                <span className="font-semibold">{isBalanceVisible ? formatCurrency(item.total) : hiddenValue}</span>
                             </li>
                         ))}
                     </ul>

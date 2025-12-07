@@ -27,6 +27,8 @@ import {
   Target,
   FileBarChart,
   Calculator,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -36,6 +38,7 @@ import { signOut } from 'firebase/auth';
 import type { User as UserProfile } from '@/lib/definitions';
 import { doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useData } from '@/context/DataContext';
 
 
 const navItems = [
@@ -54,6 +57,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
+  const { isBalanceVisible, toggleBalanceVisibility } = useData();
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
@@ -100,11 +104,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const sidebarContent = (
     <>
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <DollarSign className="w-8 h-8 text-primary" />
           <h1 className="text-2xl font-bold text-white font-headline">FluxoPro</h1>
         </Link>
+        <Button variant="ghost" size="icon" onClick={toggleBalanceVisibility} className="text-white">
+            {isBalanceVisible ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+        </Button>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>

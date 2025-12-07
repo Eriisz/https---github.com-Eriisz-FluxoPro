@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { ArrowDownCircle, ArrowUpCircle, DollarSign, Ban, Info, RefreshCw } from "lucide-react";
 import { Button } from '../ui/button';
+import { useData } from '@/context/DataContext';
 
 type OverviewCardsProps = {
     balance: number;
@@ -19,11 +20,14 @@ type OverviewCardsProps = {
 
 export function OverviewCards({ balance, income, expenses, budget, spent, showBalance, pendingExpenses }: OverviewCardsProps) {
   const [budgetView, setBudgetView] = useState<'budget' | 'pending'>('budget');
+  const { isBalanceVisible } = useData();
   const remainingBudget = budget - spent;
   
   const toggleBudgetView = () => {
     setBudgetView(prev => prev === 'budget' ? 'pending' : 'budget');
   }
+
+  const hiddenValue = '•••••';
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -37,7 +41,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
         <CardContent>
           {showBalance ? (
             <>
-              <div className="text-2xl font-bold">{formatCurrency(balance)}</div>
+              <div className="text-2xl font-bold">{isBalanceVisible ? formatCurrency(balance) : hiddenValue}</div>
               <p className="text-xs text-muted-foreground">
                 Soma dos saldos de todas as contas
               </p>
@@ -60,7 +64,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
           <ArrowUpCircle className="h-4 w-4 text-primary" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-primary">{formatCurrency(income)}</div>
+          <div className="text-2xl font-bold text-primary">{isBalanceVisible ? formatCurrency(income) : hiddenValue}</div>
           <p className="text-xs text-muted-foreground">
             Total de receitas no mês selecionado
           </p>
@@ -74,7 +78,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
           <ArrowDownCircle className="h-4 w-4 text-destructive" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-destructive">{formatCurrency(Math.abs(expenses))}</div>
+          <div className="text-2xl font-bold text-destructive">{isBalanceVisible ? formatCurrency(Math.abs(expenses)) : hiddenValue}</div>
            <p className="text-xs text-muted-foreground">
             Total de despesas no mês selecionado
           </p>
@@ -93,16 +97,16 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
           {budgetView === 'budget' ? (
             <>
               <div className={`text-2xl font-bold ${remainingBudget >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-                {formatCurrency(remainingBudget)}
+                {isBalanceVisible ? formatCurrency(remainingBudget) : hiddenValue}
               </div>
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(spent)} de {formatCurrency(budget)} gastos
+                {isBalanceVisible ? `${formatCurrency(spent)} de ${formatCurrency(budget)} gastos` : '••••• de ••••• gastos'}
               </p>
             </>
           ) : (
             <>
               <div className="text-2xl font-bold text-destructive">
-                {formatCurrency(pendingExpenses)}
+                {isBalanceVisible ? formatCurrency(pendingExpenses) : hiddenValue}
               </div>
               <p className="text-xs text-muted-foreground">
                 Soma das despesas pendentes/atrasadas

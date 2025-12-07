@@ -38,6 +38,7 @@ import { Badge } from '../ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { isPast, startOfToday } from 'date-fns';
 import { revalidateDashboard } from '@/lib/actions';
+import { useData } from '@/context/DataContext';
 
 interface HistoryTableProps {
   transactions: (Transaction & { categoryName: string, categoryColor: string, accountName: string })[];
@@ -49,6 +50,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { isBalanceVisible } = useData();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
 
@@ -159,7 +161,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
                             : "text-destructive"
                         }`}
                     >
-                        {transaction.type === 'expense' ? `-${formatCurrency(Math.abs(transaction.value))}`: formatCurrency(transaction.value)}
+                        {isBalanceVisible ? (transaction.type === 'expense' ? `-${formatCurrency(Math.abs(transaction.value))}`: formatCurrency(transaction.value)) : '•••••'}
                     </TableCell>
                     <TableCell>
                         <DropdownMenu>
@@ -198,7 +200,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
                 <TableFooter>
                     <TableRow>
                         <TableCell colSpan={5} className="text-right font-bold">Total</TableCell>
-                        <TableCell className="text-right font-bold">{formatCurrency(total)}</TableCell>
+                        <TableCell className="text-right font-bold">{isBalanceVisible ? formatCurrency(total) : '•••••'}</TableCell>
                         <TableCell></TableCell>
                     </TableRow>
                 </TableFooter>

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils';
 import { AreaChart, Banknote } from 'lucide-react';
+import { useData } from '@/context/DataContext';
 
 const formSchema = z.object({
   initialValue: z.string().min(1, 'Obrigatório'),
@@ -27,6 +28,7 @@ interface CalculationResult {
 
 export function InflationCalculator() {
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const { isBalanceVisible } = useData();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -52,6 +54,8 @@ export function InflationCalculator() {
     });
   }
 
+  const hiddenValue = '•••••';
+
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -71,7 +75,7 @@ export function InflationCalculator() {
                   <FormItem>
                     <FormLabel>Valor Inicial (R$)</FormLabel>
                     <FormControl>
-                      <Input type="text" placeholder="1000,00" {...field} />
+                      <Input type={isBalanceVisible ? 'text' : 'password'} placeholder="1000,00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -110,10 +114,10 @@ export function InflationCalculator() {
                 <div className="space-y-4 text-center border p-8 rounded-lg bg-muted w-full">
                     <Banknote className="mx-auto h-12 w-12 text-primary" />
                     <p className="text-sm text-muted-foreground">Valor Corrigido</p>
-                    <p className="text-4xl font-bold text-primary">{formatCurrency(result.correctedValue)}</p>
+                    <p className="text-4xl font-bold text-primary">{isBalanceVisible ? formatCurrency(result.correctedValue) : hiddenValue}</p>
                     <div className="pt-4 text-center">
                         <p className="text-muted-foreground">Variação Total</p>
-                        <p className="font-semibold text-lg">{formatCurrency(result.totalCorrection)}</p>
+                        <p className="font-semibold text-lg">{isBalanceVisible ? formatCurrency(result.totalCorrection) : hiddenValue}</p>
                     </div>
                 </div>
               </div>

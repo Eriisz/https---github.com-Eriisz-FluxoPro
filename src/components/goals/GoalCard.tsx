@@ -38,6 +38,7 @@ import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { revalidateDashboard } from '@/lib/actions';
+import { useData } from '@/context/DataContext';
 
 interface GoalCardProps {
   goal: Goal;
@@ -48,10 +49,12 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { isBalanceVisible } = useData();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
 
   const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
   const remaining = goal.targetAmount - goal.currentAmount;
+  const hiddenValue = '•••••';
 
   const handleDelete = async () => {
     if (!user) return;
@@ -90,7 +93,7 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
             </DropdownMenu>
           </div>
           <CardDescription>
-            {formatCurrency(goal.targetAmount)}
+            {isBalanceVisible ? formatCurrency(goal.targetAmount) : hiddenValue}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -98,16 +101,18 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
             <Progress value={progress} />
             <div className="flex justify-between text-sm">
               <span className="font-medium text-primary">
-                {formatCurrency(goal.currentAmount)}
+                {isBalanceVisible ? formatCurrency(goal.currentAmount) : hiddenValue}
               </span>
               <span className="text-muted-foreground">
                 Progresso: {progress.toFixed(0)}%
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              {remaining > 0
-                ? `${formatCurrency(remaining)} restantes para atingir sua meta.`
-                : 'Meta alcançada! Parabéns!'}
+              {isBalanceVisible
+                ? (remaining > 0
+                  ? `${formatCurrency(remaining)} restantes para atingir sua meta.`
+                  : 'Meta alcançada! Parabéns!')
+                : '••••• restantes para sua meta.'}
             </p>
           </div>
         </CardContent>

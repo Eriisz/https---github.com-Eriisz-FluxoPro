@@ -58,7 +58,7 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
   const { toast } = useToast();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [accountToDelete, setAccountToDelete] = React.useState<Account | null>(null);
-  const { allTransactions } = useData();
+  const { allTransactions, isBalanceVisible } = useData();
 
   const accountBalances = useMemo(() => {
     const balances = new Map<string, number>();
@@ -92,6 +92,8 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
     }
   };
 
+  const hiddenValue = '•••••';
+
   return (
     <>
       <div className="rounded-lg border">
@@ -114,8 +116,8 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
                   </TableCell>
                   <TableCell className="text-right">
                     {account.type === 'CartaoCredito'
-                      ? `Limite: ${formatCurrency(account.limit || 0)}`
-                      : formatCurrency(accountBalances.get(account.id) || 0)}
+                      ? `Limite: ${isBalanceVisible ? formatCurrency(account.limit || 0) : hiddenValue}`
+                      : isBalanceVisible ? formatCurrency(accountBalances.get(account.id) || 0) : hiddenValue}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
