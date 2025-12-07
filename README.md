@@ -1,3 +1,4 @@
+npx fix-react2shell-next
 # Firebase Studio
 
 This is a NextJS starter in Firebase Studio.
