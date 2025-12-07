@@ -107,9 +107,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <SidebarHeader className="p-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <DollarSign className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl font-bold text-white font-headline">FluxoPro</h1>
+          <h1 className="text-2xl font-bold text-foreground font-headline">FluxoPro</h1>
         </Link>
-        <Button variant="ghost" size="icon" onClick={toggleBalanceVisibility} className="text-white">
+        <Button variant="ghost" size="icon" onClick={toggleBalanceVisibility} className="text-foreground">
             {isBalanceVisible ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
         </Button>
       </SidebarHeader>
@@ -184,11 +184,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Sheet>
             <Link href="/" className="flex items-center gap-2 ml-4">
               <DollarSign className="w-7 h-7 text-primary" />
-              <h1 className="text-xl font-bold text-white font-headline">FluxoPro</h1>
+              <h1 className="text-xl font-bold text-foreground font-headline">FluxoPro</h1>
             </Link>
           </header>
           <SidebarInset>
-            <main className="flex flex-col flex-1 p-4 md:p-8">{children}</main>
+            <main className="flex flex-col flex-1 p-4 md:p-8">
+              <div className="w-full max-w-7xl mx-auto">
+                {children}
+              </div>
+            </main>
           </SidebarInset>
         </div>
       </div>

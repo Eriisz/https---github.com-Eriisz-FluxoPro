@@ -117,14 +117,14 @@ export default function HistoryPage() {
                     <TabsTrigger value="expenses">Despesas</TabsTrigger>
                     <TabsTrigger value="income">Receitas</TabsTrigger>
                 </TabsList>
-                <TabsContent value="expenses">
+                <TabsContent value="expenses" className="mt-4">
                     <HistoryTable
                         transactions={expenseTransactions}
                         onEdit={handleEditTransaction}
                         total={totalExpenses}
                     />
                 </TabsContent>
-                <TabsContent value="income">
+                <TabsContent value="income" className="mt-4">
                     <HistoryTable
                         transactions={incomeTransactions}
                         onEdit={handleEditTransaction}
