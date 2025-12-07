@@ -62,13 +62,22 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
 
   const accountBalances = useMemo(() => {
     const balances = new Map<string, number>();
-    accounts.forEach(account => {
-        const transactionsForAccount = (allTransactions || []).filter(
-            t => t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
-        );
-        const totalFromTransactions = transactionsForAccount.reduce((acc, t) => acc + t.value, 0);
+    if (!accounts || !allTransactions) {
+      return balances;
+    }
+
+    const transactionTotals = new Map<string, number>();
+    for (const t of allTransactions) {
+      if (paidOrReceivedStatuses.includes(t.status)) {
+        const currentTotal = transactionTotals.get(t.accountId) || 0;
+        transactionTotals.set(t.accountId, currentTotal + t.value);
+      }
+    }
+    
+    for (const account of accounts) {
+        const totalFromTransactions = transactionTotals.get(account.id) || 0;
         balances.set(account.id, (account.initialBalance || 0) + totalFromTransactions);
-    });
+    }
     return balances;
   }, [accounts, allTransactions]);
 
