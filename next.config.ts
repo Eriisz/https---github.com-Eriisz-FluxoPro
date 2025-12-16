@@ -30,13 +30,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    // This is required to allow the Next.js dev server to be accessed from
-    // the Cloud Workstation preview.
-    allowedDevOrigins: [
-      "https://6000-firebase-fluxopro100-1763604405911.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev",
-    ],
-  },
+  // This is required to allow the Next.js dev server to be accessed from
+  // the Cloud Workstation preview.
+  allowedDevOrigins: [
+    "https://6000-firebase-fluxopro100-1763604405911.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev",
+  ],
 };
 
 export default nextConfig;
