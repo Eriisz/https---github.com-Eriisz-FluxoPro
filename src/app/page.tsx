@@ -1,6 +1,6 @@
 
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { PageHeader } from "@/components/PageHeader";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
@@ -21,81 +21,88 @@ export default function DashboardPage() {
     allTransactions, 
     budgets, 
     goals,
-    isLoading 
+    isLoading: isDataLoading 
   } = useData();
 
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [isCalculating, setIsCalculating] = useState(true);
 
-  const startOfSelectedMonth = useMemo(() => startOfMonth(currentDate), [currentDate]);
-  const endOfSelectedMonth = useMemo(() => endOfMonth(currentDate), [currentDate]);
-  
-  const selectedMonthTransactions = useMemo(() => {
-    if (!allTransactions) return [];
-    return allTransactions.filter(t => {
+  const {
+    totalBalance,
+    income,
+    expenses,
+    totalBudget,
+    spentThisMonth,
+    categorySpending,
+    recentTransactions,
+    monthlyFlow,
+    isCurrentMonth,
+    pendingExpenses,
+    selectedMonthTransactions,
+    currentYearTransactions,
+  } = useMemo(() => {
+    if (isDataLoading) {
+      return {
+        totalBalance: 0,
+        income: 0,
+        expenses: 0,
+        totalBudget: 0,
+        spentThisMonth: 0,
+        categorySpending: [],
+        recentTransactions: [],
+        monthlyFlow: [],
+        isCurrentMonth: false,
+        pendingExpenses: 0,
+        selectedMonthTransactions: [],
+        currentYearTransactions: [],
+      };
+    }
+    
+    const startOfSelectedMonth = startOfMonth(currentDate);
+    const endOfSelectedMonth = endOfMonth(currentDate);
+    
+    const selectedMonthTransactions = (allTransactions || []).filter(t => {
         const tDate = new Date(t.date);
         return tDate >= startOfSelectedMonth && tDate <= endOfSelectedMonth;
     });
-  }, [allTransactions, startOfSelectedMonth, endOfSelectedMonth]);
 
-  const currentYearTransactions = useMemo(() => {
-    if (!allTransactions) return [];
-    const now = new Date();
-    const startOfCurrentYear = startOfYear(now);
-    const endOfCurrentYear = endOfYear(now);
-    return allTransactions.filter(t => {
+    const currentYearTransactions = (allTransactions || []).filter(t => {
+      const now = new Date();
+      const startOfCurrentYear = startOfYear(now);
+      const endOfCurrentYear = endOfYear(now);
       const tDate = new Date(t.date);
       return tDate >= startOfCurrentYear && tDate <= endOfCurrentYear;
     });
-  }, [allTransactions]);
 
-  const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
-  
-  const totalBalance = useMemo(() => {
-    if (!accounts || !allTransactions) return 0;
-  
-    // Calculate the final balance for each non-credit-card account
-    const nonCreditCardAccounts = accounts.filter(acc => acc.type !== 'CartaoCredito');
-    const accountBalances = nonCreditCardAccounts.map(account => {
-        const transactionsForAccount = allTransactions.filter(t => 
+    const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
+    
+    const totalBalance = (accounts || []).filter(acc => acc.type !== 'CartaoCredito')
+      .reduce((total, account) => {
+        const transactionsForAccount = (allTransactions || []).filter(t => 
             t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
         );
         const totalFromTransactions = transactionsForAccount.reduce((sum, t) => sum + t.value, 0);
-        return (account.initialBalance || 0) + totalFromTransactions;
-    });
-
-    // Sum the final balances of all non-credit-card accounts
-    const totalFromAccounts = accountBalances.reduce((sum, balance) => sum + balance, 0);
-  
-    return totalFromAccounts;
-  }, [accounts, allTransactions]);
+        return total + (account.initialBalance || 0) + totalFromTransactions;
+    }, 0);
 
 
-  const income = useMemo(() => {
-    return selectedMonthTransactions
+    const income = selectedMonthTransactions
         .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
-  }, [selectedMonthTransactions]);
 
-  const expenses = useMemo(() => {
-    return selectedMonthTransactions
+    const expenses = selectedMonthTransactions
         .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + t.value, 0);
-  }, [selectedMonthTransactions]);
 
-  const totalBudget = useMemo(() => {
     const selectedMonthString = format(currentDate, 'yyyy-MM');
     const budgetForMonth = (budgets || []).find(b => b.month === selectedMonthString);
-    return budgetForMonth ? budgetForMonth.limit : 0;
-  }, [budgets, currentDate]);
-  
-  const spentThisMonth = useMemo(() => {
-    return selectedMonthTransactions
+    const totalBudget = budgetForMonth ? budgetForMonth.limit : 0;
+    
+    const spentThisMonth = selectedMonthTransactions
         .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
         .reduce((acc, t) => acc + Math.abs(t.value), 0);
-  }, [selectedMonthTransactions]);
-      
-  const categorySpending = useMemo(() => {
-    return (categories || [])
+        
+    const categorySpending = (categories || [])
       .filter(c => c.type === 'expense')
       .map(category => {
           const total = selectedMonthTransactions
@@ -104,16 +111,11 @@ export default function DashboardPage() {
           return { category: category.name, total, fill: category.color };
       })
       .filter(c => c.total > 0);
-  }, [categories, selectedMonthTransactions]);
 
-  const recentTransactions = useMemo(() => {
-    return (selectedMonthTransactions || [])
+    const recentTransactions = (selectedMonthTransactions || [])
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [selectedMonthTransactions]);
-      
-  const monthlyFlow = useMemo(() => {
-    if (!allTransactions) return [];
-    return Array.from({ length: 12 }, (_, i) => {
+        
+    const monthlyFlow = Array.from({ length: 12 }, (_, i) => {
         const monthDate = subMonths(new Date(), i);
         const start = startOfMonth(monthDate);
         const end = endOfMonth(monthDate);
@@ -129,20 +131,40 @@ export default function DashboardPage() {
             expenses: monthTransactions.filter(t=> t.type === 'expense').reduce((acc, t) => acc + t.value, 0)
         }
     }).reverse().map(d => ({ ...d, expenses: Math.abs(d.expenses) }));
-  }, [allTransactions]);
 
-  const isCurrentMonth = useMemo(() => {
     const today = new Date();
-    return isSameMonth(today, currentDate) && isSameYear(today, currentDate);
-  }, [currentDate]);
+    const isCurrentMonth = isSameMonth(today, currentDate) && isSameYear(today, currentDate);
 
-  const pendingExpenses = useMemo(() => {
-    return selectedMonthTransactions
+    const pendingExpenses = selectedMonthTransactions
       .filter(t => t.type === 'expense' && (t.status === 'PENDING' || t.status === 'LATE'))
       .reduce((acc, t) => acc + Math.abs(t.value), 0);
-  }, [selectedMonthTransactions]);
 
-  if (isLoading) {
+    return {
+      totalBalance,
+      income,
+      expenses,
+      totalBudget,
+      spentThisMonth,
+      categorySpending,
+      recentTransactions,
+      monthlyFlow,
+      isCurrentMonth,
+      pendingExpenses,
+      selectedMonthTransactions,
+      currentYearTransactions,
+    };
+  }, [accounts, categories, allTransactions, budgets, currentDate, isDataLoading]);
+
+  useEffect(() => {
+    if (!isDataLoading) {
+      setIsCalculating(false);
+    } else {
+      setIsCalculating(true);
+    }
+  }, [isDataLoading]);
+
+
+  if (isDataLoading || isCalculating) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader className="w-8 h-8 animate-spin" />
