@@ -76,10 +76,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const { data: allTransactions, isLoading: loadingAllTransactions } = useCollection<Transaction>(allTransactionsQuery);
 
   const isLoading =
-    loadingAccounts &&
-    loadingCategories &&
-    loadingBudgets &&
-    loadingGoals &&
+    loadingAccounts ||
+    loadingCategories ||
+    loadingBudgets ||
+    loadingGoals ||
     loadingAllTransactions;
     
   const value = {

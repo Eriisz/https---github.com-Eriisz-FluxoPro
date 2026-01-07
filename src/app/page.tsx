@@ -25,7 +25,6 @@ export default function DashboardPage() {
   } = useData();
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [isCalculating, setIsCalculating] = useState(true);
 
   const {
     totalBalance,
@@ -155,16 +154,8 @@ export default function DashboardPage() {
     };
   }, [accounts, categories, allTransactions, budgets, currentDate, isDataLoading]);
 
-  useEffect(() => {
-    if (!isDataLoading) {
-      setIsCalculating(false);
-    } else {
-      setIsCalculating(true);
-    }
-  }, [isDataLoading]);
 
-
-  if (isDataLoading || isCalculating) {
+  if (isDataLoading) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader className="w-8 h-8 animate-spin" />
