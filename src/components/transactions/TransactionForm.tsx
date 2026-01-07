@@ -527,7 +527,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                   onValueChange={field.onChange}
                   defaultValue={field.value}
                   className="flex space-x-4"
-                  disabled={isEditing}
                 >
                   <FormItem className="flex items-center space-x-2 space-y-0">
                     <FormControl>
