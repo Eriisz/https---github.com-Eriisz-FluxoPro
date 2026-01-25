@@ -183,33 +183,54 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
     setIsSubmitting(true);
     
     try {
-        if (isEditing) {
-            await handleUpdateTransactions(data);
-            toast({
-                title: "Sucesso!",
-                description: "Transação(ões) atualizada(s) com sucesso!",
-            });
-        } else {
-            const batch = writeBatch(firestore);
-            const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
-            const groupId = data.frequency !== 'single' ? doc(collection(firestore, '_')).id : undefined;
-            const totalValue = parseFloat(data.value.replace(',', '.'));
-            const numberOfInstallments = data.frequency !== 'single' ? parseInt(data.installments || '1', 10) : 1;
+        const originalFrequency = isEditing && transaction?.groupId ? (transaction.installments ? 'installment' : 'recurring') : 'single';
+        const newFrequency = data.frequency;
+        
+        const originalInstallmentCount = isEditing && transaction?.installments ? transaction.installments.total : 1;
+        const newInstallmentCount = newFrequency !== 'single' ? parseInt(data.installments || '1', 10) : 1;
+        
+        const isFrequencyChanged = isEditing && originalFrequency !== newFrequency;
+        const isInstallmentCountChanged = isEditing && originalFrequency === 'installment' && originalInstallmentCount !== newInstallmentCount;
+        
+        const isRecurringToFinite = isEditing && originalFrequency === 'recurring' && newInstallmentCount > 1;
 
-            for (let i = 0; i < numberOfInstallments; i++) {
+        if (isEditing && !isFrequencyChanged && !isInstallmentCountChanged && !isRecurringToFinite) {
+            // ===== NON-DESTRUCTIVE EDIT =====
+            await handleUpdateTransactions(data);
+            toast({ title: "Sucesso!", description: "Transação(ões) atualizada(s) com sucesso!" });
+        } else {
+            // ===== CREATE NEW OR DESTRUCTIVE EDIT =====
+
+            // If it's a destructive edit, delete the old transactions first.
+            if (isEditing) {
+                const batchDelete = writeBatch(firestore);
+                const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
+                if (transaction?.groupId) {
+                    const q = query(transactionsCol, where('groupId', '==', transaction.groupId));
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach(doc => batchDelete.delete(doc.ref));
+                } else { // was a single transaction
+                    batchDelete.delete(doc(transactionsCol, transaction.id));
+                }
+                await batchDelete.commit();
+            }
+
+            // Now, create the new transaction(s)
+            const batchCreate = writeBatch(firestore);
+            const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
+            const groupId = newFrequency !== 'single' ? doc(collection(firestore, '_')).id : undefined;
+            const totalValue = parseFloat(data.value.replace(',', '.'));
+            
+            for (let i = 0; i < newInstallmentCount; i++) {
                 const transactionDate = addMonths(data.date, i);
                 
                 let installmentValue = totalValue;
-                if (data.frequency === 'installment') {
-                    installmentValue = totalValue / numberOfInstallments;
+                if (newFrequency === 'installment') {
+                    installmentValue = totalValue / newInstallmentCount;
                 }
 
                 const transactionValue = data.type === 'expense' ? -installmentValue : installmentValue;
-                
-                let finalStatus = data.status;
-                if (data.status === 'LATE') {
-                    finalStatus = 'PENDING';
-                }
+                let finalStatus = data.status === 'LATE' ? 'PENDING' : data.status;
 
                 const transactionId = doc(collection(firestore, '_')).id;
                 const newTransactionData: Transaction = {
@@ -222,19 +243,23 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                     categoryId: data.categoryId || '',
                     type: data.type,
                     status: finalStatus,
-                    ...(groupId && { groupId }),
-                    ...(numberOfInstallments > 1 && { installments: { current: i + 1, total: numberOfInstallments } }),
                 };
-                const newDocRef = doc(transactionsCol, transactionId);
-                batch.set(newDocRef, newTransactionData);
-            }
-            
-            await batch.commit();
 
-            toast({
-                title: "Sucesso!",
-                description: `Transação ${numberOfInstallments > 1 ? data.frequency : ''} adicionada com sucesso!`,
-            });
+                if(groupId) {
+                    newTransactionData.groupId = groupId;
+                }
+
+                if (newFrequency === 'installment' && newInstallmentCount > 1) {
+                    newTransactionData.installments = { current: i + 1, total: newInstallmentCount };
+                }
+                
+                const newDocRef = doc(transactionsCol, transactionId);
+                batchCreate.set(newDocRef, newTransactionData);
+            }
+            await batchCreate.commit();
+
+            const toastMessage = isEditing ? "Transação reestruturada com sucesso!" : `Transação ${newInstallmentCount > 1 ? newFrequency : ''} adicionada com sucesso!`;
+            toast({ title: "Sucesso!", description: toastMessage });
         }
 
         await revalidateDashboard();
@@ -321,7 +346,6 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                   }}
                   defaultValue={field.value}
                   className="flex justify-center space-x-4"
-                  disabled={isEditing}
                 >
                   <FormItem className="flex items-center space-x-2 space-y-0">
                     <FormControl>
@@ -552,7 +576,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
             </FormItem>
           )}
         />
-        {transactionFrequency !== 'single' && !isEditing && (
+        {transactionFrequency !== 'single' && (
             <FormField
             control={form.control}
             name="installments"
