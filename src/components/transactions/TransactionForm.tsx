@@ -181,6 +181,11 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
     }
 
     setIsSubmitting(true);
+
+    // If recurring, we don't show the input, so we set a default value here.
+    if (data.frequency === 'recurring') {
+        data.installments = '24'; // Creates 2 years of recurring transactions
+    }
     
     try {
         const originalFrequency = isEditing && transaction?.groupId ? (transaction.installments ? 'installment' : 'recurring') : 'single';
@@ -576,20 +581,20 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
             </FormItem>
           )}
         />
-        {transactionFrequency !== 'single' && (
-            <FormField
+        {transactionFrequency === 'installment' && (
+          <FormField
             control={form.control}
             name="installments"
             render={({ field }) => (
-                <FormItem>
-                <FormLabel>{transactionFrequency === 'installment' ? 'Número de Parcelas' : 'Número de Meses'}</FormLabel>
+              <FormItem>
+                <FormLabel>Número de Parcelas</FormLabel>
                 <FormControl>
-                    <Input type="number" placeholder="Ex: 12" {...field} />
+                  <Input type="number" placeholder="Ex: 12" {...field} />
                 </FormControl>
                 <FormMessage />
-                </FormItem>
+              </FormItem>
             )}
-            />
+          />
         )}
         
         <Button type="submit" disabled={isSubmitting} className="w-full">
