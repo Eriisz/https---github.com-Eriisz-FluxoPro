@@ -32,13 +32,15 @@ import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react
 import type { Transaction } from '@/lib/definitions';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { doc } from 'firebase/firestore';
+import { doc, writeBatch, query, where, collection, getDocs } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Badge } from '../ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { isPast, startOfToday } from 'date-fns';
 import { revalidateDashboard } from '@/lib/actions';
 import { useData } from '@/context/DataContext';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface HistoryTableProps {
   transactions: (Transaction & { categoryName: string, categoryColor: string, accountName: string })[];
@@ -53,24 +55,48 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
   const { isBalanceVisible } = useData();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
+  const [deleteScope, setDeleteScope] = React.useState<'current' | 'all'>('current');
 
   const handleDeleteClick = (transaction: Transaction) => {
     setTransactionToDelete(transaction);
+    setDeleteScope('current');
     setIsAlertOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (user && transactionToDelete) {
+    if (!user || !transactionToDelete) return;
+
+    if (transactionToDelete.groupId && deleteScope === 'all') {
+      const batch = writeBatch(firestore);
+      const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
+      const q = query(transactionsCol, where('groupId', '==', transactionToDelete.groupId));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      batch.commit().catch(e => {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao deletar',
+          description: 'Não foi possível deletar as transações do grupo.',
+        });
+      });
+      toast({
+        title: 'Sucesso!',
+        description: 'As transações do grupo foram marcadas para exclusão.',
+      });
+    } else {
       const transactionRef = doc(firestore, `users/${user.uid}/transactions`, transactionToDelete.id);
       deleteDocumentNonBlocking(transactionRef);
-      await revalidateDashboard();
       toast({
         title: 'Sucesso!',
         description: 'Transação deletada com sucesso.',
       });
-      setIsAlertOpen(false);
-      setTransactionToDelete(null);
     }
+
+    await revalidateDashboard();
+    setIsAlertOpen(false);
+    setTransactionToDelete(null);
   };
 
   const getTransactionStatus = (transaction: Transaction) => {
@@ -216,6 +242,23 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
               <strong>{transactionToDelete?.description}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          
+          {transactionToDelete?.groupId && (
+            <div className="space-y-3 bg-muted p-3 rounded-md border my-4">
+              <Label className="text-sm font-semibold">Esta é uma transação recorrente/parcelada.</Label>
+              <RadioGroup value={deleteScope} onValueChange={(value) => setDeleteScope(value as 'current' | 'all')}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="current" id="delete-current-history" />
+                  <Label htmlFor="delete-current-history" className="font-normal">Deletar somente esta ocorrência</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="all" id="delete-all-history" />
+                  <Label htmlFor="delete-all-history" className="font-normal">Deletar todas as ocorrências</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete}>
