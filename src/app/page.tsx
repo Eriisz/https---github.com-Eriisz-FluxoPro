@@ -61,6 +61,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isDataLoading) {
+        setIsCalculating(true);
         return;
     }
 
@@ -84,11 +85,14 @@ export default function DashboardPage() {
         });
 
         const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
+        const today = new Date();
         
         const totalBalance = (accounts || []).filter(acc => acc.type !== 'CartaoCredito')
           .reduce((total, account) => {
             const transactionsForAccount = (allTransactions || []).filter(t => 
-                t.accountId === account.id && paidOrReceivedStatuses.includes(t.status)
+                t.accountId === account.id && 
+                paidOrReceivedStatuses.includes(t.status) &&
+                new Date(t.date) <= today
             );
             const totalFromTransactions = transactionsForAccount.reduce((sum, t) => sum + t.value, 0);
             return total + (account.initialBalance || 0) + totalFromTransactions;
@@ -141,7 +145,6 @@ export default function DashboardPage() {
             }
         }).reverse().map(d => ({ ...d, expenses: Math.abs(d.expenses) }));
 
-        const today = new Date();
         const isCurrentMonth = isSameMonth(today, currentDate) && isSameYear(today, currentDate);
 
         const pendingExpenses = selectedMonthTransactions

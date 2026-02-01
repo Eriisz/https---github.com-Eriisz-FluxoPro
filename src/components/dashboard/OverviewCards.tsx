@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -43,7 +42,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
             <>
               <div className="text-2xl font-bold">{isBalanceVisible ? formatCurrency(balance) : hiddenValue}</div>
               <p className="text-xs text-muted-foreground">
-                Soma dos saldos de todas as contas
+                Saldo acumulado até o dia de hoje
               </p>
             </>
           ) : (
