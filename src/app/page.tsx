@@ -15,7 +15,7 @@ import type { Category, Transaction } from '@/lib/definitions';
 
 
 type DashboardData = {
-    totalBalance: number;
+    monthlyNet: number;
     income: number;
     expenses: number;
     totalBudget: number;
@@ -29,7 +29,7 @@ type DashboardData = {
 };
 
 const initialDashboardData: DashboardData = {
-    totalBalance: 0,
+    monthlyNet: 0,
     income: 0,
     expenses: 0,
     totalBudget: 0,
@@ -74,11 +74,6 @@ export default function DashboardPage() {
             return tDate >= startOfSelectedMonth && tDate <= endOfSelectedMonth;
         });
 
-        const transactionsBeforeSelectedMonth = (allTransactions || []).filter(t => {
-            const tDate = new Date(t.date);
-            return tDate < startOfSelectedMonth;
-        });
-
         const currentYearTransactions = (allTransactions || []).filter(t => {
           const now = new Date();
           const startOfCurrentYear = startOfYear(now);
@@ -89,23 +84,6 @@ export default function DashboardPage() {
 
         const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
         
-        // Calculate the balance at the beginning of the selected month
-        const balanceAtStartOfMonth = (accounts || []).filter(acc => acc.type !== 'CartaoCredito')
-          .reduce((total, account) => {
-            const historicalTransactionsForAccount = transactionsBeforeSelectedMonth.filter(t => 
-                t.accountId === account.id && 
-                paidOrReceivedStatuses.includes(t.status)
-            );
-            const totalFromTransactions = historicalTransactionsForAccount.reduce((sum, t) => sum + t.value, 0);
-            return total + (account.initialBalance || 0) + totalFromTransactions;
-        }, 0);
-
-        // Calculate the net flow for the selected month, including all statuses for projection
-        const projectedNetFlowForMonth = selectedMonthTransactions.reduce((acc, t) => acc + t.value, 0);
-
-        // Projected balance at the end of the month
-        const totalBalance = balanceAtStartOfMonth + projectedNetFlowForMonth;
-
         const income = selectedMonthTransactions
             .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
             .reduce((acc, t) => acc + t.value, 0);
@@ -113,6 +91,8 @@ export default function DashboardPage() {
         const expenses = selectedMonthTransactions
             .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
             .reduce((acc, t) => acc + t.value, 0);
+
+        const monthlyNet = income + expenses; // expenses is negative
 
         const selectedMonthString = format(currentDate, 'yyyy-MM');
         const budgetForMonth = (budgets || []).find(b => b.month === selectedMonthString);
@@ -157,7 +137,7 @@ export default function DashboardPage() {
           .reduce((acc, t) => acc + Math.abs(t.value), 0);
 
         setDashboardData({
-          totalBalance,
+          monthlyNet,
           income,
           expenses,
           totalBudget,
@@ -186,7 +166,7 @@ export default function DashboardPage() {
   }
 
   const {
-    totalBalance,
+    monthlyNet,
     income,
     expenses,
     totalBudget,
@@ -207,7 +187,7 @@ export default function DashboardPage() {
       </PageHeader>
 
       <OverviewCards 
-        balance={totalBalance}
+        monthlyNet={monthlyNet}
         income={income}
         expenses={expenses}
         budget={totalBudget}

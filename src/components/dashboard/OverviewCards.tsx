@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowDownCircle, ArrowUpCircle, DollarSign, Ban, Info, RefreshCw } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, RefreshCw, Scale } from "lucide-react";
 import { Button } from '../ui/button';
 import { useData } from '@/context/DataContext';
 
 type OverviewCardsProps = {
-    balance: number;
+    monthlyNet: number;
     income: number;
     expenses: number;
     budget: number;
@@ -16,7 +16,7 @@ type OverviewCardsProps = {
     pendingExpenses: number;
 }
 
-export function OverviewCards({ balance, income, expenses, budget, spent, pendingExpenses }: OverviewCardsProps) {
+export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pendingExpenses }: OverviewCardsProps) {
   const [budgetView, setBudgetView] = useState<'budget' | 'pending'>('budget');
   const { isBalanceVisible } = useData();
   const remainingBudget = budget - spent;
@@ -32,14 +32,16 @@ export function OverviewCards({ balance, income, expenses, budget, spent, pendin
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Saldo Consolidado
+            Saldo do Mês
           </CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <Scale className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{isBalanceVisible ? formatCurrency(balance) : hiddenValue}</div>
+          <div className={`text-2xl font-bold ${monthlyNet >= 0 ? 'text-primary' : 'text-destructive'}`}>
+            {isBalanceVisible ? formatCurrency(monthlyNet) : hiddenValue}
+          </div>
           <p className="text-xs text-muted-foreground">
-            Projeção de saldo no final do mês
+            Diferença entre receitas e despesas
           </p>
         </CardContent>
       </Card>
