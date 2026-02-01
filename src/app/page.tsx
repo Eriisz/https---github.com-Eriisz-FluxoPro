@@ -5,7 +5,7 @@ import { OverviewCards } from "@/components/dashboard/OverviewCards";
 import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
-import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format, isSameMonth, isSameYear } from 'date-fns';
+import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
 import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
@@ -23,7 +23,6 @@ type DashboardData = {
     categorySpending: { category: string; total: number; fill: string; }[];
     recentTransactions: Transaction[];
     monthlyFlow: { month: string; income: number; expenses: number; }[];
-    isCurrentMonth: boolean;
     pendingExpenses: number;
     selectedMonthTransactions: Transaction[];
     currentYearTransactions: Transaction[];
@@ -38,7 +37,6 @@ const initialDashboardData: DashboardData = {
     categorySpending: [],
     recentTransactions: [],
     monthlyFlow: [],
-    isCurrentMonth: false,
     pendingExpenses: 0,
     selectedMonthTransactions: [],
     currentYearTransactions: [],
@@ -68,14 +66,17 @@ export default function DashboardPage() {
     setIsCalculating(true);
 
     const processData = () => {
-        const today = new Date();
         const startOfSelectedMonth = startOfMonth(currentDate);
         const endOfSelectedMonth = endOfMonth(currentDate);
-        const isCurrentMonth = isSameMonth(today, currentDate) && isSameYear(today, currentDate);
         
         const selectedMonthTransactions = (allTransactions || []).filter(t => {
             const tDate = new Date(t.date);
             return tDate >= startOfSelectedMonth && tDate <= endOfSelectedMonth;
+        });
+
+        const transactionsBeforeSelectedMonth = (allTransactions || []).filter(t => {
+            const tDate = new Date(t.date);
+            return tDate < startOfSelectedMonth;
         });
 
         const currentYearTransactions = (allTransactions || []).filter(t => {
@@ -88,19 +89,22 @@ export default function DashboardPage() {
 
         const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
         
-        const balanceEndDate = isCurrentMonth ? today : endOfSelectedMonth;
-
-        const totalBalance = (accounts || []).filter(acc => acc.type !== 'CartaoCredito')
+        // Calculate the balance at the beginning of the selected month
+        const balanceAtStartOfMonth = (accounts || []).filter(acc => acc.type !== 'CartaoCredito')
           .reduce((total, account) => {
-            const transactionsForAccount = (allTransactions || []).filter(t => 
+            const historicalTransactionsForAccount = transactionsBeforeSelectedMonth.filter(t => 
                 t.accountId === account.id && 
-                paidOrReceivedStatuses.includes(t.status) &&
-                new Date(t.date) <= balanceEndDate
+                paidOrReceivedStatuses.includes(t.status)
             );
-            const totalFromTransactions = transactionsForAccount.reduce((sum, t) => sum + t.value, 0);
+            const totalFromTransactions = historicalTransactionsForAccount.reduce((sum, t) => sum + t.value, 0);
             return total + (account.initialBalance || 0) + totalFromTransactions;
         }, 0);
 
+        // Calculate the net flow for the selected month, including all statuses for projection
+        const projectedNetFlowForMonth = selectedMonthTransactions.reduce((acc, t) => acc + t.value, 0);
+
+        // Projected balance at the end of the month
+        const totalBalance = balanceAtStartOfMonth + projectedNetFlowForMonth;
 
         const income = selectedMonthTransactions
             .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
@@ -161,7 +165,6 @@ export default function DashboardPage() {
           categorySpending,
           recentTransactions,
           monthlyFlow,
-          isCurrentMonth,
           pendingExpenses,
           selectedMonthTransactions,
           currentYearTransactions,
@@ -191,7 +194,6 @@ export default function DashboardPage() {
     categorySpending,
     recentTransactions,
     monthlyFlow,
-    isCurrentMonth,
     pendingExpenses,
     selectedMonthTransactions,
     currentYearTransactions,
@@ -210,7 +212,6 @@ export default function DashboardPage() {
         expenses={expenses}
         budget={totalBudget}
         spent={spentThisMonth}
-        isCurrentMonth={isCurrentMonth}
         pendingExpenses={pendingExpenses}
       />
       

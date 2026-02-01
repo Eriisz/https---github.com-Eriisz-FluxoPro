@@ -13,11 +13,10 @@ type OverviewCardsProps = {
     expenses: number;
     budget: number;
     spent: number;
-    isCurrentMonth: boolean;
     pendingExpenses: number;
 }
 
-export function OverviewCards({ balance, income, expenses, budget, spent, isCurrentMonth, pendingExpenses }: OverviewCardsProps) {
+export function OverviewCards({ balance, income, expenses, budget, spent, pendingExpenses }: OverviewCardsProps) {
   const [budgetView, setBudgetView] = useState<'budget' | 'pending'>('budget');
   const { isBalanceVisible } = useData();
   const remainingBudget = budget - spent;
@@ -40,7 +39,7 @@ export function OverviewCards({ balance, income, expenses, budget, spent, isCurr
         <CardContent>
           <div className="text-2xl font-bold">{isBalanceVisible ? formatCurrency(balance) : hiddenValue}</div>
           <p className="text-xs text-muted-foreground">
-            {isCurrentMonth ? 'Saldo acumulado até o dia de hoje' : 'Saldo no final do mês selecionado'}
+            Projeção de saldo no final do mês
           </p>
         </CardContent>
       </Card>
