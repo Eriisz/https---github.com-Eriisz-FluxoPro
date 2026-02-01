@@ -13,11 +13,11 @@ type OverviewCardsProps = {
     expenses: number;
     budget: number;
     spent: number;
-    showBalance: boolean;
+    isCurrentMonth: boolean;
     pendingExpenses: number;
 }
 
-export function OverviewCards({ balance, income, expenses, budget, spent, showBalance, pendingExpenses }: OverviewCardsProps) {
+export function OverviewCards({ balance, income, expenses, budget, spent, isCurrentMonth, pendingExpenses }: OverviewCardsProps) {
   const [budgetView, setBudgetView] = useState<'budget' | 'pending'>('budget');
   const { isBalanceVisible } = useData();
   const remainingBudget = budget - spent;
@@ -38,21 +38,10 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          {showBalance ? (
-            <>
-              <div className="text-2xl font-bold">{isBalanceVisible ? formatCurrency(balance) : hiddenValue}</div>
-              <p className="text-xs text-muted-foreground">
-                Saldo acumulado até o dia de hoje
-              </p>
-            </>
-          ) : (
-             <div className="flex flex-col items-center justify-center h-full text-center">
-                <Info className="h-6 w-6 text-muted-foreground mb-2" />
-                <p className="text-xs text-muted-foreground">
-                    O saldo consolidado é exibido apenas para o mês atual.
-                </p>
-            </div>
-          )}
+          <div className="text-2xl font-bold">{isBalanceVisible ? formatCurrency(balance) : hiddenValue}</div>
+          <p className="text-xs text-muted-foreground">
+            {isCurrentMonth ? 'Saldo acumulado até o dia de hoje' : 'Saldo no final do mês selecionado'}
+          </p>
         </CardContent>
       </Card>
       <Card>
@@ -117,5 +106,3 @@ export function OverviewCards({ balance, income, expenses, budget, spent, showBa
     </div>
   );
 }
-
-    

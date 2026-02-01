@@ -68,8 +68,10 @@ export default function DashboardPage() {
     setIsCalculating(true);
 
     const processData = () => {
+        const today = new Date();
         const startOfSelectedMonth = startOfMonth(currentDate);
         const endOfSelectedMonth = endOfMonth(currentDate);
+        const isCurrentMonth = isSameMonth(today, currentDate) && isSameYear(today, currentDate);
         
         const selectedMonthTransactions = (allTransactions || []).filter(t => {
             const tDate = new Date(t.date);
@@ -85,14 +87,15 @@ export default function DashboardPage() {
         });
 
         const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
-        const today = new Date();
         
+        const balanceEndDate = isCurrentMonth ? today : endOfSelectedMonth;
+
         const totalBalance = (accounts || []).filter(acc => acc.type !== 'CartaoCredito')
           .reduce((total, account) => {
             const transactionsForAccount = (allTransactions || []).filter(t => 
                 t.accountId === account.id && 
                 paidOrReceivedStatuses.includes(t.status) &&
-                new Date(t.date) <= today
+                new Date(t.date) <= balanceEndDate
             );
             const totalFromTransactions = transactionsForAccount.reduce((sum, t) => sum + t.value, 0);
             return total + (account.initialBalance || 0) + totalFromTransactions;
@@ -144,8 +147,6 @@ export default function DashboardPage() {
                 expenses: monthTransactions.filter(t=> t.type === 'expense').reduce((acc, t) => acc + t.value, 0)
             }
         }).reverse().map(d => ({ ...d, expenses: Math.abs(d.expenses) }));
-
-        const isCurrentMonth = isSameMonth(today, currentDate) && isSameYear(today, currentDate);
 
         const pendingExpenses = selectedMonthTransactions
           .filter(t => t.type === 'expense' && (t.status === 'PENDING' || t.status === 'LATE'))
@@ -209,7 +210,7 @@ export default function DashboardPage() {
         expenses={expenses}
         budget={totalBudget}
         spent={spentThisMonth}
-        showBalance={isCurrentMonth}
+        isCurrentMonth={isCurrentMonth}
         pendingExpenses={pendingExpenses}
       />
       
