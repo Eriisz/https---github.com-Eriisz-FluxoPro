@@ -39,15 +39,15 @@ export function CategoryChart({ data }: { data: { category: string, total: numbe
   };
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="luxury-card flex h-full flex-col">
       <CardHeader>
-        <CardTitle>Gastos por Categoria</CardTitle>
-        <CardDescription>Distribuição de despesas no mês atual</CardDescription>
+        <CardTitle className="font-headline text-2xl">Gastos por categoria</CardTitle>
+        <CardDescription className="compact-hide">Distribuição de despesas no mês atual</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
+      <CardContent className="flex-1 pb-4">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[300px]"
+          className="mx-auto aspect-square max-h-[300px] w-full"
         >
           <PieChart>
             <RechartsTooltip 
@@ -81,22 +81,22 @@ export function CategoryChart({ data }: { data: { category: string, total: numbe
 export function MonthlyFlowChart({ data }: { data: any[] }) {
   const { isBalanceVisible } = useData();
   const chartConfig = {
-    income: { label: "Receitas", color: "hsl(var(--chart-1))" },
-    expenses: { label: "Despesas", color: "hsl(var(--destructive))" },
+    income: { label: "Receitas", color: "hsl(var(--income))" },
+    expenses: { label: "Despesas", color: "hsl(var(--expense))" },
   }
 
   const valueFormatter = (value: number) => isBalanceVisible ? formatCurrency(value) : '•••••';
 
   return (
-    <Card className="h-full">
+    <Card className="luxury-card h-full">
       <CardHeader>
-        <CardTitle>Fluxo de Caixa Mensal</CardTitle>
-        <CardDescription>Receitas vs. Despesas do último ano</CardDescription>
+        <CardTitle className="font-headline text-2xl">Fluxo de caixa</CardTitle>
+        <CardDescription className="compact-hide">Receitas vs. despesas dos últimos 12 meses</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <BarChart data={data} accessibilityLayer>
-            <CartesianGrid vertical={false} />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
               dataKey="month"
               tickLine={false}
@@ -109,8 +109,8 @@ export function MonthlyFlowChart({ data }: { data: any[] }) {
                 content={<ChartTooltipContent formatter={(value) => isBalanceVisible ? formatCurrency(Number(value)) : '•••••'} />}
             />
             <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="income" fill="hsl(var(--chart-1))" radius={4} />
-            <Bar dataKey="expenses" fill="hsl(var(--destructive))" radius={4} />
+            <Bar dataKey="income" fill="hsl(var(--income))" radius={6} />
+            <Bar dataKey="expenses" fill="hsl(var(--expense))" radius={6} />
           </BarChart>
         </ChartContainer>
       </CardContent>

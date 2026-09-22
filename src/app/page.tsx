@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import { PageHeader } from "@/components/PageHeader";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
+import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
 import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
@@ -14,15 +14,6 @@ import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
 import { MarketTicker } from '@/components/dashboard/MarketTicker';
 import { InsightsBanner } from '@/components/dashboard/InsightsBanner';
 import type { Transaction } from '@/lib/definitions';
-
-const Live3DFlowChart = dynamic(
-  () => import('@/components/dashboard/Live3DCharts').then((mod) => ({ default: mod.Live3DFlowChart })),
-  { ssr: false, loading: () => <div className="luxury-card h-[420px] animate-pulse" /> }
-);
-const Live3DCategoryChart = dynamic(
-  () => import('@/components/dashboard/Live3DCharts').then((mod) => ({ default: mod.Live3DCategoryChart })),
-  { ssr: false, loading: () => <div className="luxury-card h-[420px] animate-pulse" /> }
-);
 
 
 type DashboardData = {
@@ -220,8 +211,8 @@ export default function DashboardPage() {
       <GoalsCarousel goals={goals || []} />
 
       <div className="dash-charts">
-        <Live3DFlowChart data={monthlyFlow} />
-        <Live3DCategoryChart data={categorySpending} />
+        <MonthlyFlowChart data={monthlyFlow} />
+        <CategoryChart data={categorySpending} />
       </div>
       <SummaryReport 
         monthlyData={selectedMonthTransactions} 
