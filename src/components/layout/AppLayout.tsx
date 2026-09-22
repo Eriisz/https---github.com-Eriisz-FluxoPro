@@ -29,6 +29,7 @@ import {
   Calculator,
   Eye,
   EyeOff,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -39,10 +40,12 @@ import type { User as UserProfile } from '@/lib/definitions';
 import { doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useData } from '@/context/DataContext';
+import { GlobalSearch } from '@/components/search/GlobalSearch';
 
 
 const navItems = [
   { href: '/', label: 'Painel', icon: LayoutDashboard },
+  { href: '/search', label: 'Pesquisa', icon: Search },
   { href: '/history', label: 'Histórico', icon: Wallet },
   { href: '/accounts', label: 'Contas', icon: Landmark },
   { href: '/categories', label: 'Categorias', icon: Tags },
@@ -109,9 +112,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <DollarSign className="w-8 h-8 text-primary" />
           <h1 className="text-2xl font-bold text-foreground font-headline">FluxoPro</h1>
         </Link>
-        <Button variant="ghost" size="icon" onClick={toggleBalanceVisibility} className="text-foreground">
-            {isBalanceVisible ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.dispatchEvent(new Event('fluxopro:open-search'))}
+            className="text-foreground"
+            title="Pesquisar (Ctrl+K)"
+          >
+            <Search className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={toggleBalanceVisibility} className="text-foreground">
+              {isBalanceVisible ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+          </Button>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
@@ -188,12 +202,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           </header>
           <SidebarInset>
+            <div className="hidden md:flex items-center justify-end gap-3 px-8 pt-6">
+              <Button
+                variant="outline"
+                className="min-w-[280px] justify-between border-primary/20 bg-card/70 text-muted-foreground"
+                onClick={() => window.dispatchEvent(new Event('fluxopro:open-search'))}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Search className="h-4 w-4 text-primary" />
+                  Pesquisar transações, contas, metas...
+                </span>
+                <kbd className="rounded border border-primary/20 px-1.5 py-0.5 text-[10px]">Ctrl K</kbd>
+              </Button>
+            </div>
             <main className="flex flex-col flex-1 p-4 md:p-8">
               <div className="w-full max-w-7xl mx-auto">
                 {children}
               </div>
             </main>
           </SidebarInset>
+          <GlobalSearch />
         </div>
       </div>
     </SidebarProvider>

@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { PageHeader } from "@/components/PageHeader";
 import { OverviewCards } from "@/components/dashboard/OverviewCards";
-import { CategoryChart, MonthlyFlowChart } from "@/components/dashboard/Charts";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { TransactionDialog } from "@/components/transactions/TransactionDialog";
 import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
@@ -11,7 +11,18 @@ import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
 import { SummaryReport } from '@/components/dashboard/SummaryReport';
 import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
-import type { Category, Transaction } from '@/lib/definitions';
+import { MarketTicker } from '@/components/dashboard/MarketTicker';
+import { InsightsBanner } from '@/components/dashboard/InsightsBanner';
+import type { Transaction } from '@/lib/definitions';
+
+const Live3DFlowChart = dynamic(
+  () => import('@/components/dashboard/Live3DCharts').then((mod) => ({ default: mod.Live3DFlowChart })),
+  { ssr: false, loading: () => <div className="luxury-card h-[420px] animate-pulse" /> }
+);
+const Live3DCategoryChart = dynamic(
+  () => import('@/components/dashboard/Live3DCharts').then((mod) => ({ default: mod.Live3DCategoryChart })),
+  { ssr: false, loading: () => <div className="luxury-card h-[420px] animate-pulse" /> }
+);
 
 
 type DashboardData = {
@@ -186,6 +197,8 @@ export default function DashboardPage() {
         <TransactionDialog accounts={accounts || []} categories={categories || []} />
       </PageHeader>
 
+      <MarketTicker />
+
       <OverviewCards 
         monthlyNet={monthlyNet}
         income={income}
@@ -194,12 +207,21 @@ export default function DashboardPage() {
         spent={spentThisMonth}
         pendingExpenses={pendingExpenses}
       />
+
+      <InsightsBanner
+        income={income}
+        expenses={expenses}
+        categorySpending={categorySpending}
+        pendingExpenses={pendingExpenses}
+        budget={totalBudget}
+        spent={spentThisMonth}
+      />
       
       <GoalsCarousel goals={goals || []} />
 
       <div className="grid gap-6 md:grid-cols-2">
-        <MonthlyFlowChart data={monthlyFlow} />
-        <CategoryChart data={categorySpending} />
+        <Live3DFlowChart data={monthlyFlow} />
+        <Live3DCategoryChart data={categorySpending} />
       </div>
       <SummaryReport 
         monthlyData={selectedMonthTransactions} 

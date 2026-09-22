@@ -1,7 +1,9 @@
 
 'use client';
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { PageHeader } from "@/components/PageHeader";
+import { AdvancedFilters } from '@/components/search/AdvancedFilters';
+import { EMPTY_FILTERS, filterTransactions, type SearchFilters } from '@/lib/finance-engine';
 import {
   Card,
   CardContent,
@@ -26,6 +28,7 @@ export default function HistoryPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>(undefined);
   const { allTransactions, categories, accounts, isLoading } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
 
   const handleEditTransaction = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -38,29 +41,16 @@ export default function HistoryPage() {
   }
 
   const monthlyTransactions = useMemo(() => {
-    if (!allTransactions) return [];
-    
     const startOfSelectedMonth = startOfMonth(currentDate);
     const endOfSelectedMonth = endOfMonth(currentDate);
+    const scoped = (allTransactions || []).filter((transaction) => {
+      if (filters.allPeriods || filters.dateFrom || filters.dateTo) return true;
+      const date = new Date(transaction.date);
+      return date >= startOfSelectedMonth && date <= endOfSelectedMonth;
+    });
 
-    const sortedTransactions = allTransactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
-    return sortedTransactions
-        .filter(t => {
-            const tDate = new Date(t.date);
-            return tDate >= startOfSelectedMonth && tDate <= endOfSelectedMonth;
-        })
-        .map(t => {
-            const category = (categories || []).find(c => c.id === t.categoryId);
-            const account = (accounts || []).find(a => a.id === t.accountId);
-            return { 
-                ...t, 
-                categoryColor: category?.color || '#A9A9A9', 
-                categoryName: category?.name || 'Sem Categoria',
-                accountName: account?.name || 'Conta desconhecida'
-            };
-        });
-  }, [allTransactions, categories, accounts, currentDate]);
+    return filterTransactions(scoped, categories || [], accounts || [], filters);
+  }, [allTransactions, categories, accounts, currentDate, filters]);
   
   const incomeTransactions = useMemo(() => monthlyTransactions.filter(t => t.type === 'income'), [monthlyTransactions]);
   const expenseTransactions = useMemo(() => monthlyTransactions.filter(t => t.type === 'expense'), [monthlyTransactions]);
@@ -104,11 +94,18 @@ export default function HistoryPage() {
             }
          />
       </PageHeader>
-      <Card>
+      <AdvancedFilters
+        filters={filters}
+        onChange={setFilters}
+        onReset={() => setFilters({ ...EMPTY_FILTERS })}
+        categories={categories || []}
+        accounts={accounts || []}
+      />
+      <Card className="luxury-card">
         <CardHeader>
           <CardTitle>Movimentações do Mês</CardTitle>
           <CardDescription>
-            Visualize suas receitas e despesas do período selecionado.
+            Busque e filtre receitas e despesas. Ative “todos os períodos” para pesquisar o histórico completo.
           </CardDescription>
         </CardHeader>
         <CardContent>

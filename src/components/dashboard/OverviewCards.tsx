@@ -29,7 +29,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
+      <Card className="luxury-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Saldo do Mês
@@ -45,7 +45,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
           </p>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="luxury-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Receitas (Mês)
@@ -59,7 +59,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
           </p>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="luxury-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Despesas (Mês)
@@ -73,7 +73,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
           </p>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="luxury-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {budgetView === 'budget' ? 'Orçamento Restante' : 'Necessário para Quitar'}
