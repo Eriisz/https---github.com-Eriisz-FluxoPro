@@ -191,7 +191,7 @@ export default function DashboardPage() {
   } = dashboardData;
 
   return (
-    <div className="flex flex-col flex-1 gap-8">
+    <div className="dash-stack flex flex-col flex-1">
       <PageHeader title="Painel de Controle">
         <MonthYearPicker date={currentDate} onDateChange={setCurrentDate} />
         <TransactionDialog accounts={accounts || []} categories={categories || []} />
@@ -219,7 +219,7 @@ export default function DashboardPage() {
       
       <GoalsCarousel goals={goals || []} />
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="dash-charts">
         <Live3DFlowChart data={monthlyFlow} />
         <Live3DCategoryChart data={categorySpending} />
       </div>

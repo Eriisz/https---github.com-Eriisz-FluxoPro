@@ -28,7 +28,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
   const hiddenValue = '•••••';
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="dash-kpis">
       <Card className="luxury-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -40,7 +40,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
           <div className={`text-2xl font-bold ${monthlyNet >= 0 ? 'text-primary' : 'text-destructive'}`}>
             {isBalanceVisible ? formatCurrency(monthlyNet) : hiddenValue}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground compact-hide">
             Diferença entre receitas e despesas
           </p>
         </CardContent>
@@ -54,7 +54,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-primary">{isBalanceVisible ? formatCurrency(income) : hiddenValue}</div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground compact-hide">
             Total de receitas no mês selecionado
           </p>
         </CardContent>
@@ -68,7 +68,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-destructive">{isBalanceVisible ? formatCurrency(Math.abs(expenses)) : hiddenValue}</div>
-           <p className="text-xs text-muted-foreground">
+           <p className="text-xs text-muted-foreground compact-hide">
             Total de despesas no mês selecionado
           </p>
         </CardContent>

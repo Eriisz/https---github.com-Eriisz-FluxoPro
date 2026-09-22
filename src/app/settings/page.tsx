@@ -34,7 +34,7 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-8">
       <PageHeader title="Ajustes" />
       <div className="grid gap-6">
-        <Card>
+        <Card className="luxury-card">
             <CardHeader>
             <CardTitle>Perfil</CardTitle>
             <CardDescription>
@@ -46,7 +46,7 @@ export default function SettingsPage() {
             </CardContent>
         </Card>
         
-        <Card>
+        <Card className="luxury-card">
             <CardHeader>
                 <CardTitle>Aparência</CardTitle>
                 <CardDescription>

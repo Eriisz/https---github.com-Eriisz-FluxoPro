@@ -25,10 +25,12 @@
     --ring: 42 58% 42%;
     --radius: 0.9rem;
     --chart-1: 42 58% 42%;
-    --chart-2: 152 35% 32%;
-    --chart-3: 12 55% 42%;
-    --chart-4: 200 28% 38%;
-    --chart-5: 28 60% 48%;
+    --chart-2: 201 70% 36%;
+    --chart-3: 28 80% 46%;
+    --chart-4: 262 30% 42%;
+    --chart-5: 186 40% 36%;
+    --income: 42 58% 42%;
+    --expense: 4 72% 46%;
   }
 
   .dark {
@@ -52,10 +54,97 @@
     --input: 40 10% 18%;
     --ring: 42 62% 62%;
     --chart-1: 42 62% 62%;
-    --chart-2: 152 48% 48%;
-    --chart-3: 4 68% 58%;
-    --chart-4: 200 50% 58%;
-    --chart-5: 28 70% 58%;
+    --chart-2: 199 78% 58%;
+    --chart-3: 28 78% 58%;
+    --chart-4: 262 40% 68%;
+    --chart-5: 186 50% 52%;
+    --income: 42 62% 62%;
+    --expense: 4 68% 58%;
+  }
+
+  html[data-palette='ocean'] {
+    --primary: 199 78% 36%;
+    --ring: 199 78% 36%;
+    --accent: 199 40% 88%;
+    --chart-1: 199 78% 36%;
+    --income: 199 78% 36%;
+  }
+  html.dark[data-palette='ocean'] {
+    --primary: 196 80% 62%;
+    --ring: 196 80% 62%;
+    --accent: 199 30% 16%;
+    --chart-1: 196 80% 62%;
+    --income: 196 80% 62%;
+  }
+
+  html[data-palette='forest'] {
+    --primary: 152 40% 28%;
+    --ring: 152 40% 28%;
+    --accent: 90 30% 88%;
+    --chart-1: 152 40% 28%;
+    --income: 152 40% 28%;
+  }
+  html.dark[data-palette='forest'] {
+    --primary: 146 42% 58%;
+    --ring: 146 42% 58%;
+    --accent: 152 20% 14%;
+    --chart-1: 146 42% 58%;
+    --income: 146 42% 58%;
+  }
+
+  html[data-palette='ruby'] {
+    --primary: 350 55% 38%;
+    --ring: 350 55% 38%;
+    --accent: 350 40% 92%;
+    --chart-1: 350 55% 38%;
+    --income: 350 45% 42%;
+  }
+  html.dark[data-palette='ruby'] {
+    --primary: 350 62% 68%;
+    --ring: 350 62% 68%;
+    --accent: 350 28% 16%;
+    --chart-1: 350 62% 68%;
+    --income: 350 62% 68%;
+  }
+
+  html[data-palette='graphite'] {
+    --primary: 220 12% 32%;
+    --ring: 220 12% 32%;
+    --accent: 220 14% 90%;
+    --chart-1: 220 12% 32%;
+    --income: 220 12% 32%;
+  }
+  html.dark[data-palette='graphite'] {
+    --primary: 210 16% 72%;
+    --ring: 210 16% 72%;
+    --accent: 220 10% 16%;
+    --chart-1: 210 16% 72%;
+    --income: 210 16% 72%;
+  }
+
+  html[data-colorblind='on'] {
+    --primary: 201 98% 36%;
+    --ring: 201 98% 36%;
+    --destructive: 37 98% 44%;
+    --chart-1: 201 98% 36%;
+    --chart-2: 37 98% 44%;
+    --chart-3: 48 95% 48%;
+    --chart-4: 326 48% 48%;
+    --chart-5: 186 80% 32%;
+    --income: 201 98% 36%;
+    --expense: 37 98% 44%;
+  }
+  html.dark[data-colorblind='on'] {
+    --primary: 201 90% 64%;
+    --ring: 201 90% 64%;
+    --destructive: 37 95% 58%;
+    --chart-1: 201 90% 64%;
+    --chart-2: 37 95% 58%;
+    --chart-3: 48 90% 62%;
+    --chart-4: 326 55% 68%;
+    --chart-5: 186 70% 52%;
+    --income: 201 90% 64%;
+    --expense: 37 95% 58%;
   }
 }
 
@@ -77,8 +166,8 @@
     pointer-events: none;
     position: fixed;
     inset: 0;
-    opacity: 0.045;
-    z-index: 40;
+    opacity: 0.04;
+    z-index: 0;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
   }
 }
@@ -90,4 +179,57 @@
       0 0 0 1px hsl(var(--primary) / 0.08),
       0 24px 50px -28px rgb(0 0 0 / 0.55);
   }
+
+  .dash-stack {
+    @apply flex flex-col gap-8;
+  }
+  .dash-kpis {
+    @apply grid gap-4 md:grid-cols-2 lg:grid-cols-4;
+  }
+  .dash-charts {
+    @apply grid gap-6 md:grid-cols-2 items-stretch;
+  }
+}
+
+html[data-density='compact'] .dash-stack {
+  gap: 0.85rem;
+}
+html[data-density='compact'] .dash-kpis {
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+html[data-density='compact'] .dash-charts {
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
+}
+html[data-density='compact'] .luxury-card {
+  border-radius: 0.85rem;
+}
+html[data-density='compact'] h1 {
+  font-size: 1.65rem !important;
+  line-height: 1.15;
+}
+html[data-density='compact'] .compact-hide {
+  display: none !important;
+}
+html[data-density='compact'] .chart-stage {
+  height: 240px !important;
+}
+html[data-density='compact'] .app-shell {
+  max-width: 430px;
+  margin-inline: auto;
+  min-height: 100svh;
+  border-left: 1px solid hsl(var(--border));
+  border-right: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  box-shadow: 0 0 80px hsl(var(--primary) / 0.08);
+}
+html[data-density='compact'] .desktop-only {
+  display: none !important;
+}
+html[data-density='compact'] .mobile-always {
+  display: flex !important;
+}
+html[data-density='compact'] main {
+  padding: 0.85rem !important;
 }

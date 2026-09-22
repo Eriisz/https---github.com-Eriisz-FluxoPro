@@ -30,6 +30,7 @@ import {
   Eye,
   EyeOff,
   Search,
+  Smartphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -41,6 +42,7 @@ import { doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useData } from '@/context/DataContext';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
+import { useAppearance } from '@/context/AppearanceContext';
 
 
 const navItems = [
@@ -61,6 +63,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const firestore = useFirestore();
   const { isBalanceVisible, toggleBalanceVisibility } = useData();
+  const { compact, setCompact } = useAppearance();
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
@@ -122,6 +125,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <Search className="w-5 h-5" />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCompact(!compact)}
+            className="text-foreground"
+            title="Visualização celular"
+          >
+            <Smartphone className="w-5 h-5" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggleBalanceVisibility} className="text-foreground">
               {isBalanceVisible ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
           </Button>
@@ -181,11 +193,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen bg-background">
-        <div className="hidden md:block">
+        <div className="hidden md:block desktop-only">
           <Sidebar>{sidebarContent}</Sidebar>
         </div>
-        <div className="flex flex-col flex-1">
-          <header className="sticky top-0 z-10 flex items-center h-16 px-4 border-b bg-background/80 backdrop-blur-sm md:hidden">
+        <div className="flex flex-col flex-1 app-shell">
+          <header className="sticky top-0 z-10 flex items-center h-16 px-4 border-b bg-background/80 backdrop-blur-sm md:hidden mobile-always">
             <Sheet>
               <SheetTrigger asChild>
                 <Button size="icon" variant="ghost">
@@ -200,9 +212,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <DollarSign className="w-7 h-7 text-primary" />
               <h1 className="text-xl font-bold text-foreground font-headline">FluxoPro</h1>
             </Link>
+            <div className="ml-auto flex items-center">
+              <Button variant="ghost" size="icon" onClick={() => window.dispatchEvent(new Event('fluxopro:open-search'))}>
+                <Search className="w-5 h-5" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setCompact(!compact)} title="Visualização celular">
+                <Smartphone className="w-5 h-5" />
+              </Button>
+            </div>
           </header>
           <SidebarInset>
-            <div className="hidden md:flex items-center justify-end gap-3 px-8 pt-6">
+            <div className="hidden md:flex desktop-only items-center justify-end gap-3 px-8 pt-6">
               <Button
                 variant="outline"
                 className="min-w-[280px] justify-between border-primary/20 bg-card/70 text-muted-foreground"

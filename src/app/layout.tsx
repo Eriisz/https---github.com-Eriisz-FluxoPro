@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FirebaseClientProvider } from '@/firebase';
 import { DataProvider } from '@/context/DataContext';
+import { AppearanceProvider } from '@/context/AppearanceContext';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
@@ -13,13 +14,13 @@ export const metadata: Metadata = {
 
 const applyTheme = `
   (function() {
-    const theme = localStorage.getItem('theme');
     const root = document.documentElement;
-    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    const theme = localStorage.getItem('theme');
+    const dark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.classList.toggle('dark', dark);
+    root.dataset.palette = localStorage.getItem('palette') || 'gold';
+    root.dataset.colorblind = localStorage.getItem('colorblind') === '1' ? 'on' : 'off';
+    root.dataset.density = localStorage.getItem('compact') === '1' ? 'compact' : 'comfortable';
   })()
 `;
 
@@ -42,11 +43,13 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
-          <DataProvider>
-            <AppLayout>
-              {children}
-            </AppLayout>
-          </DataProvider>
+          <AppearanceProvider>
+            <DataProvider>
+              <AppLayout>
+                {children}
+              </AppLayout>
+            </DataProvider>
+          </AppearanceProvider>
           <Toaster />
         </FirebaseClientProvider>
         <SpeedInsights />
