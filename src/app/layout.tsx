@@ -20,7 +20,8 @@ const applyTheme = `
     root.classList.toggle('dark', dark);
     root.dataset.palette = localStorage.getItem('palette') || 'gold';
     root.dataset.colorblind = localStorage.getItem('colorblind') === '1' ? 'on' : 'off';
-    root.dataset.density = localStorage.getItem('compact') === '1' ? 'compact' : 'comfortable';
+    delete root.dataset.density;
+    localStorage.removeItem('compact');
   })()
 `;
 

@@ -42,7 +42,7 @@ export function CategoryChart({ data }: { data: { category: string, total: numbe
     <Card className="luxury-card flex h-full flex-col">
       <CardHeader>
         <CardTitle className="font-headline text-2xl">Gastos por categoria</CardTitle>
-        <CardDescription className="compact-hide">Distribuição de despesas no mês atual</CardDescription>
+        <CardDescription>Distribuição de despesas no mês atual</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-4">
         <ChartContainer
@@ -91,7 +91,7 @@ export function MonthlyFlowChart({ data }: { data: any[] }) {
     <Card className="luxury-card h-full">
       <CardHeader>
         <CardTitle className="font-headline text-2xl">Fluxo de caixa</CardTitle>
-        <CardDescription className="compact-hide">Receitas vs. despesas dos últimos 12 meses</CardDescription>
+        <CardDescription>Receitas vs. despesas dos últimos 12 meses</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

@@ -9,14 +9,12 @@ type AppearanceState = {
   mode: ThemeMode;
   palette: ColorPalette;
   colorblind: boolean;
-  compact: boolean;
 };
 
 type AppearanceContextValue = AppearanceState & {
   setMode: (mode: ThemeMode) => void;
   setPalette: (palette: ColorPalette) => void;
   setColorblind: (value: boolean) => void;
-  setCompact: (value: boolean) => void;
 };
 
 const AppearanceContext = createContext<AppearanceContextValue | undefined>(undefined);
@@ -29,7 +27,8 @@ function applyAppearance(state: AppearanceState) {
   root.classList.toggle('dark', isDark);
   root.dataset.palette = state.palette;
   root.dataset.colorblind = state.colorblind ? 'on' : 'off';
-  root.dataset.density = state.compact ? 'compact' : 'comfortable';
+  delete root.dataset.density;
+  localStorage.removeItem('compact');
 }
 
 export function AppearanceProvider({ children }: { children: React.ReactNode }) {
@@ -37,7 +36,6 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
     mode: 'system',
     palette: 'gold',
     colorblind: false,
-    compact: false,
   });
   const [ready, setReady] = useState(false);
 
@@ -45,8 +43,7 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
     const mode = (localStorage.getItem('theme') as ThemeMode) || 'system';
     const palette = (localStorage.getItem('palette') as ColorPalette) || 'gold';
     const colorblind = localStorage.getItem('colorblind') === '1';
-    const compact = localStorage.getItem('compact') === '1';
-    const next = { mode, palette, colorblind, compact };
+    const next = { mode, palette, colorblind };
     setState(next);
     applyAppearance(next);
     setReady(true);
@@ -59,17 +56,15 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
     else localStorage.setItem('theme', state.mode);
     localStorage.setItem('palette', state.palette);
     localStorage.setItem('colorblind', state.colorblind ? '1' : '0');
-    localStorage.setItem('compact', state.compact ? '1' : '0');
   }, [state, ready]);
 
   const setMode = useCallback((mode: ThemeMode) => setState((prev) => ({ ...prev, mode })), []);
   const setPalette = useCallback((palette: ColorPalette) => setState((prev) => ({ ...prev, palette })), []);
   const setColorblind = useCallback((colorblind: boolean) => setState((prev) => ({ ...prev, colorblind })), []);
-  const setCompact = useCallback((compact: boolean) => setState((prev) => ({ ...prev, compact })), []);
 
   const value = useMemo(
-    () => ({ ...state, setMode, setPalette, setColorblind, setCompact }),
-    [state, setMode, setPalette, setColorblind, setCompact]
+    () => ({ ...state, setMode, setPalette, setColorblind }),
+    [state, setMode, setPalette, setColorblind]
   );
 
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;

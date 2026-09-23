@@ -3,7 +3,7 @@
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
-import { Computer, Eye, Moon, Smartphone, Sun } from 'lucide-react';
+import { Computer, Eye, Moon, Sun } from 'lucide-react';
 import { useAppearance, type ColorPalette } from '@/context/AppearanceContext';
 
 const PALETTES: Array<{ id: ColorPalette; label: string; swatch: string }> = [
@@ -15,7 +15,7 @@ const PALETTES: Array<{ id: ColorPalette; label: string; swatch: string }> = [
 ];
 
 export function ThemeSwitcher() {
-  const { mode, palette, colorblind, compact, setMode, setPalette, setColorblind, setCompact } = useAppearance();
+  const { mode, palette, colorblind, setMode, setPalette, setColorblind } = useAppearance();
 
   return (
     <div className="space-y-8">
@@ -72,18 +72,6 @@ export function ThemeSwitcher() {
           </p>
         </div>
         <Switch id="colorblind" checked={colorblind} onCheckedChange={setColorblind} />
-      </div>
-
-      <div className="flex items-start justify-between gap-4 rounded-xl border border-border p-4">
-        <div>
-          <Label htmlFor="compact" className="flex items-center gap-2">
-            <Smartphone className="h-4 w-4" /> Visualização celular
-          </Label>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Layout compacto, informações diretas e largura de smartphone.
-          </p>
-        </div>
-        <Switch id="compact" checked={compact} onCheckedChange={setCompact} />
       </div>
     </div>
   );
