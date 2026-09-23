@@ -45,7 +45,6 @@ import { GlobalSearch } from '@/components/search/GlobalSearch';
 
 const navItems = [
   { href: '/', label: 'Painel', icon: LayoutDashboard },
-  { href: '/search', label: 'Pesquisa', icon: Search },
   { href: '/history', label: 'Histórico', icon: Wallet },
   { href: '/accounts', label: 'Contas', icon: Landmark },
   { href: '/categories', label: 'Categorias', icon: Tags },
@@ -113,15 +112,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <h1 className="text-2xl font-bold text-foreground font-headline">FluxoPro</h1>
         </Link>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => window.dispatchEvent(new Event('fluxopro:open-search'))}
-            className="text-foreground"
-            title="Pesquisar (Ctrl+K)"
-          >
-            <Search className="w-5 h-5" />
-          </Button>
           <Button variant="ghost" size="icon" onClick={toggleBalanceVisibility} className="text-foreground">
               {isBalanceVisible ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
           </Button>

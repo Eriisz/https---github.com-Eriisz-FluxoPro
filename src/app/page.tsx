@@ -11,7 +11,6 @@ import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
 import { SummaryReport } from '@/components/dashboard/SummaryReport';
 import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
-import { MarketTicker } from '@/components/dashboard/MarketTicker';
 import { InsightsBanner } from '@/components/dashboard/InsightsBanner';
 import type { Transaction } from '@/lib/definitions';
 
@@ -187,8 +186,6 @@ export default function DashboardPage() {
         <MonthYearPicker date={currentDate} onDateChange={setCurrentDate} />
         <TransactionDialog accounts={accounts || []} categories={categories || []} />
       </PageHeader>
-
-      <MarketTicker />
 
       <OverviewCards 
         monthlyNet={monthlyNet}
