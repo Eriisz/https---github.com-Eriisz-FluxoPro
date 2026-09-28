@@ -63,7 +63,7 @@ export const EMPTY_FILTERS: SearchFilters = {
 };
 
 const PAGE_INDEX: Array<{ title: string; subtitle: string; href: string; keywords: string[] }> = [
-  { title: 'Painel', subtitle: 'Visão geral e gráficos ao vivo', href: '/', keywords: ['painel', 'dashboard', 'inicio', 'graficos'] },
+  { title: 'Painel', subtitle: 'Visão geral e gráficos 2D', href: '/', keywords: ['painel', 'dashboard', 'inicio', 'graficos'] },
   { title: 'Pesquisa avançada', subtitle: 'Buscar e filtrar movimentações', href: '/search', keywords: ['pesquisa', 'busca', 'filtro', 'procurar'] },
   { title: 'Histórico', subtitle: 'Receitas e despesas do mês', href: '/history', keywords: ['historico', 'transacoes', 'extrato'] },
   { title: 'Contas', subtitle: 'Contas, cartões e saldos', href: '/accounts', keywords: ['contas', 'cartao', 'banco'] },

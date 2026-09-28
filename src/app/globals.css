@@ -67,14 +67,18 @@
     --ring: 199 78% 36%;
     --accent: 199 40% 88%;
     --chart-1: 199 78% 36%;
+    --chart-2: 184 70% 40%;
     --income: 199 78% 36%;
+    --expense: 184 70% 40%;
   }
   html.dark[data-palette='ocean'] {
     --primary: 196 80% 62%;
     --ring: 196 80% 62%;
     --accent: 199 30% 16%;
     --chart-1: 196 80% 62%;
+    --chart-2: 184 70% 52%;
     --income: 196 80% 62%;
+    --expense: 184 70% 52%;
   }
 
   html[data-palette='forest'] {
@@ -82,14 +86,18 @@
     --ring: 152 40% 28%;
     --accent: 90 30% 88%;
     --chart-1: 152 40% 28%;
+    --chart-2: 35 72% 44%;
     --income: 152 40% 28%;
+    --expense: 35 72% 44%;
   }
   html.dark[data-palette='forest'] {
     --primary: 146 42% 58%;
     --ring: 146 42% 58%;
     --accent: 152 20% 14%;
     --chart-1: 146 42% 58%;
+    --chart-2: 35 78% 58%;
     --income: 146 42% 58%;
+    --expense: 35 78% 58%;
   }
 
   html[data-palette='ruby'] {
@@ -97,14 +105,18 @@
     --ring: 350 55% 38%;
     --accent: 350 40% 92%;
     --chart-1: 350 55% 38%;
+    --chart-2: 18 72% 46%;
     --income: 350 45% 42%;
+    --expense: 18 72% 46%;
   }
   html.dark[data-palette='ruby'] {
     --primary: 350 62% 68%;
     --ring: 350 62% 68%;
     --accent: 350 28% 16%;
     --chart-1: 350 62% 68%;
+    --chart-2: 18 74% 62%;
     --income: 350 62% 68%;
+    --expense: 18 74% 62%;
   }
 
   html[data-palette='graphite'] {
@@ -112,14 +124,18 @@
     --ring: 220 12% 32%;
     --accent: 220 14% 90%;
     --chart-1: 220 12% 32%;
+    --chart-2: 210 26% 46%;
     --income: 220 12% 32%;
+    --expense: 210 26% 46%;
   }
   html.dark[data-palette='graphite'] {
     --primary: 210 16% 72%;
     --ring: 210 16% 72%;
     --accent: 220 10% 16%;
     --chart-1: 210 16% 72%;
+    --chart-2: 210 30% 62%;
     --income: 210 16% 72%;
+    --expense: 210 30% 62%;
   }
 
   html[data-colorblind='on'] {

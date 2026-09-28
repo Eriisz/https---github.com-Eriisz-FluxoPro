@@ -78,7 +78,10 @@ export function useCollection<T = any>(
           path = (memoizedTargetRefOrQuery as CollectionReference).path;
         } else {
           // For queries, the path is on the collection reference it was created from.
-          path = (memoizedTargetRefOrQuery as Query)._query.path.toString();
+          const queryInternals = memoizedTargetRefOrQuery as unknown as {
+            _query?: { path?: { toString: () => string } };
+          };
+          path = queryInternals._query?.path?.toString() || 'unknown';
         }
         
 
