@@ -183,7 +183,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 bg-card border-r-0">
-                <Sidebar variant="sidebar">{sidebarContent}</Sidebar>
+                <Sidebar variant="sidebar" collapsible="none">{sidebarContent}</Sidebar>
               </SheetContent>
             </Sheet>
             <Link href="/" className="flex items-center gap-2 ml-4">
