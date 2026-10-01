@@ -20,6 +20,7 @@ type DashboardData = {
   monthlyNet: number;
   income: number;
   expenses: number;
+  allExpenses: number;
   totalBudget: number;
   spentThisMonth: number;
   categorySpending: { category: string; total: number; fill: string }[];
@@ -34,6 +35,7 @@ const initialDashboardData: DashboardData = {
   monthlyNet: 0,
   income: 0,
   expenses: 0,
+  allExpenses: 0,
   totalBudget: 0,
   spentThisMonth: 0,
   categorySpending: [],
@@ -90,6 +92,9 @@ export function DashboardPageContent() {
     const expenses = selectedMonthTransactions
       .filter((transaction) => transaction.type === 'expense' && paidOrReceivedStatuses.includes(transaction.status))
       .reduce((total, transaction) => total + transaction.value, 0);
+    const allExpenses = selectedMonthTransactions
+      .filter((transaction) => transaction.type === 'expense')
+      .reduce((total, transaction) => total + Math.abs(transaction.value), 0);
     const monthlyNet = income + expenses;
 
     const selectedMonthString = format(currentDate, 'yyyy-MM');
@@ -149,6 +154,7 @@ export function DashboardPageContent() {
       monthlyNet,
       income,
       expenses,
+      allExpenses,
       totalBudget,
       spentThisMonth,
       categorySpending,
@@ -173,6 +179,7 @@ export function DashboardPageContent() {
     monthlyNet,
     income,
     expenses,
+    allExpenses,
     totalBudget,
     spentThisMonth,
     categorySpending,
@@ -194,7 +201,7 @@ export function DashboardPageContent() {
         <OverviewCards
           monthlyNet={monthlyNet}
           income={income}
-          expenses={expenses}
+          expenses={allExpenses}
           budget={totalBudget}
           spent={spentThisMonth}
           pendingExpenses={pendingExpenses}
