@@ -99,6 +99,12 @@ export default function LoginPage() {
               Cadastre-se
             </Link>
           </div>
+          <div className="mt-3 text-center text-sm text-muted-foreground">
+            Quer conhecer antes?{' '}
+            <Link href="/demo" className="font-medium text-primary underline underline-offset-4">
+              Acesse a demonstração
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

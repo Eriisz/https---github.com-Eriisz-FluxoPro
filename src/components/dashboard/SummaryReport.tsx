@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -18,13 +18,17 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { Category, Transaction } from '@/lib/definitions';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowDownCircle, ArrowUpCircle, Scale } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, FileDown, Scale } from 'lucide-react';
 import { useData } from '@/context/DataContext';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface SummaryReportProps {
   monthlyData: Transaction[];
   yearlyData: Transaction[];
   categories: Category[];
+  periodDate: Date;
 }
 
 const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
@@ -74,6 +78,7 @@ const SummaryTab = ({ title, data, categories }: { title: string, data: Transact
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <h2 className="sr-only">{title}</h2>
       <div className="md:col-span-1 space-y-4">
         <Card className="bg-muted/30">
           <CardHeader className="flex-row items-center justify-between pb-2">
@@ -138,20 +143,53 @@ const SummaryTab = ({ title, data, categories }: { title: string, data: Transact
 };
 
 
-export function SummaryReport({ monthlyData, yearlyData, categories }: SummaryReportProps) {
+export function SummaryReport({ monthlyData, yearlyData, categories, periodDate }: SummaryReportProps) {
+  const [activePeriod, setActivePeriod] = useState<'month' | 'year'>('month');
+  const periodLabel = activePeriod === 'month'
+    ? format(periodDate, 'MMMM yyyy', { locale: ptBR })
+    : format(periodDate, 'yyyy');
+
+  const handleExportPdf = () => {
+    const previousTitle = document.title;
+    let cleanedUp = false;
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      document.body.classList.remove('print-executive-report');
+      document.title = previousTitle;
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    document.title = `FluxoPro - Relatório Executivo - ${periodLabel}`;
+    document.body.classList.add('print-executive-report');
+    window.addEventListener('afterprint', cleanup, { once: true });
+    window.print();
+    window.setTimeout(cleanup, 1000);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Relatório Financeiro</CardTitle>
-        <CardDescription>
-          Analise suas receitas e despesas por período.
-        </CardDescription>
+    <Card id="executive-report">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle>Relatório Financeiro</CardTitle>
+          <CardDescription>
+            Resumo executivo de {periodLabel}. Na janela de impressão, escolha “Salvar como PDF”.
+          </CardDescription>
+        </div>
+        <Button type="button" variant="outline" className="no-print shrink-0" onClick={handleExportPdf}>
+          <FileDown className="mr-2 h-4 w-4" />
+          Exportar PDF
+        </Button>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="month" className="w-full">
+        <Tabs
+          value={activePeriod}
+          onValueChange={(value) => setActivePeriod(value as 'month' | 'year')}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="month">Mês Atual</TabsTrigger>
-            <TabsTrigger value="year">Este Ano</TabsTrigger>
+            <TabsTrigger value="month">Mês selecionado</TabsTrigger>
+            <TabsTrigger value="year">Ano selecionado</TabsTrigger>
           </TabsList>
           <TabsContent value="month">
             <SummaryTab title="Resumo do Mês" data={monthlyData} categories={categories} />

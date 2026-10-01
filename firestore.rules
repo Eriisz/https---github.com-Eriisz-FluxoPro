@@ -10,7 +10,8 @@
  * Key Security Decisions:
  * - User listing is disallowed for privacy.
  * - Path-based rules are used to enforce data ownership, avoiding costly `get()` calls.
- * - Every `match` block comprehensively covers all five granular permissions (`get`, `list`, `create`, `update`, `delete`).
+ * - Every data collection restricts all five granular permissions (`get`, `list`, `create`, `update`, `delete`).
+ * - Documents in user subcollections must retain the path owner's `userId` field.
  *
  * Denormalization for Authorization:
  * The `userId` is embedded within each document to simplify ownership checks.
@@ -38,8 +39,10 @@ service cloud.firestore {
 
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId)
+        && (!('userId' in resource.data) || resource.data.userId == userId)
+        && request.resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
@@ -61,8 +64,10 @@ service cloud.firestore {
       }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId)
+        && (!('userId' in resource.data) || resource.data.userId == userId)
+        && request.resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
@@ -84,8 +89,10 @@ service cloud.firestore {
       }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId)
+        && (!('userId' in resource.data) || resource.data.userId == userId)
+        && request.resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
@@ -107,8 +114,10 @@ service cloud.firestore {
       }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId)
+        && (!('userId' in resource.data) || resource.data.userId == userId)
+        && request.resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
@@ -130,8 +139,10 @@ service cloud.firestore {
       }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId)
+        && (!('userId' in resource.data) || resource.data.userId == userId)
+        && request.resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
 
@@ -151,8 +162,10 @@ service cloud.firestore {
       }
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if isExistingOwner(userId)
+        && (!('userId' in resource.data) || resource.data.userId == userId)
+        && request.resource.data.userId == userId;
       allow delete: if isExistingOwner(userId);
     }
   }

@@ -112,7 +112,7 @@ export function ImportExport() {
                     // Then, add the new documents
                     for (const docData of collectionData) {
                         const docRef = doc(firestore, `users/${user.uid}/${collectionName}`, docData.id);
-                        batch.set(docRef, docData);
+                         batch.set(docRef, { ...docData, userId: user.uid });
                     }
                 }
             }

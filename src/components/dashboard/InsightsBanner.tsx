@@ -5,6 +5,7 @@ import type { FinanceInsights } from '@/lib/finance-engine';
 import { buildInsights } from '@/lib/finance-engine';
 
 type InsightsBannerProps = {
+  isDemo?: boolean;
   income: number;
   expenses: number;
   categorySpending: Array<{ category: string; total: number }>;
@@ -13,12 +14,14 @@ type InsightsBannerProps = {
   spent: number;
 };
 
-export function InsightsBanner(props: InsightsBannerProps) {
+export function InsightsBanner({ isDemo = false, ...props }: InsightsBannerProps) {
   const [insights, setInsights] = useState<FinanceInsights>(() => buildInsights(props));
 
   useEffect(() => {
     const local = buildInsights(props);
     setInsights(local);
+    if (isDemo) return;
+
     const controller = new AbortController();
     fetch('/api/insights', {
       method: 'POST',
@@ -32,7 +35,7 @@ export function InsightsBanner(props: InsightsBannerProps) {
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [props.income, props.expenses, props.pendingExpenses, props.budget, props.spent, props.categorySpending]);
+  }, [isDemo, props.income, props.expenses, props.pendingExpenses, props.budget, props.spent, props.categorySpending]);
 
   return (
     <div className="luxury-card grid gap-4 rounded-2xl p-5 md:grid-cols-[160px_1fr]">

@@ -36,9 +36,13 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
+  isDemo?: boolean;
 }
 
-export function RecentTransactions({ transactions: rawTransactions }: RecentTransactionsProps) {
+export function RecentTransactions({
+  transactions: rawTransactions,
+  isDemo = false,
+}: RecentTransactionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
   const [transactionToDelete, setTransactionToDelete] = React.useState<Transaction | null>(null);
@@ -64,13 +68,14 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
   const hiddenTransactions = transactions.slice(5);
 
   const handleDeleteClick = (transaction: Transaction) => {
+    if (isDemo) return;
     setTransactionToDelete(transaction);
     setDeleteScope('current');
     setIsAlertOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!user || !transactionToDelete) return;
+    if (isDemo || !user || !transactionToDelete) return;
 
     if (transactionToDelete.groupId && deleteScope === 'all') {
       const batch = writeBatch(firestore);
@@ -106,6 +111,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
   };
   
   const handleEditClick = (transaction: Transaction) => {
+    if (isDemo) return;
     setSelectedTransaction(transaction);
     setIsEditDialogOpen(true);
   }
@@ -135,7 +141,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
                 <TableHead className="hidden sm:table-cell">Categoria</TableHead>
                 <TableHead className="hidden md:table-cell">Data</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                {!isDemo && <TableHead className="w-[50px]"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -179,7 +185,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
                   >
                     {isBalanceVisible ? (transaction.type === 'expense' ? `-${formatCurrency(Math.abs(transaction.value))}`: formatCurrency(transaction.value)) : '•••••'}
                   </TableCell>
-                  <TableCell>
+                  {!isDemo && <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -201,7 +207,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                  </TableCell>
+                  </TableCell>}
                 </TableRow>
               ))}
             </TableBody>
@@ -221,7 +227,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
           </CardFooter>
         )}
       </Card>
-      {selectedTransaction && (
+      {!isDemo && selectedTransaction && (
         <TransactionDialog 
             accounts={accounts || []} 
             categories={categories || []}
@@ -230,7 +236,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
             transaction={selectedTransaction}
         />
       )}
-       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+       {!isDemo && <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
@@ -263,7 +269,7 @@ export function RecentTransactions({ transactions: rawTransactions }: RecentTran
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog>}
     </>
   );
 }

@@ -60,8 +60,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const firestore = useFirestore();
   const { isBalanceVisible, toggleBalanceVisibility } = useData();
+  const [authWaitTimedOut, setAuthWaitTimedOut] = React.useState(false);
 
   const isAuthPage = pathname === '/login' || pathname === '/signup';
+  const isPublicPage = isAuthPage || pathname === '/demo';
+
+  React.useEffect(() => {
+    if (!isUserLoading) {
+      setAuthWaitTimedOut(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setAuthWaitTimedOut(true), 10000);
+    return () => window.clearTimeout(timer);
+  }, [isUserLoading]);
 
   const userDocRef = useMemoFirebase(
     () => (user ? doc(firestore, `users/${user.uid}`) : null),
@@ -71,10 +83,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
 
   React.useEffect(() => {
-    if (!isUserLoading && !user && !isAuthPage) {
+    if (!isUserLoading && !user && !isPublicPage) {
       router.push('/login');
     }
-  }, [isUserLoading, user, isAuthPage, router]);
+  }, [isUserLoading, user, isPublicPage, router]);
 
 
   const handleLogout = async () => {
@@ -82,7 +94,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
-  if (isUserLoading || (!user && !isAuthPage)) {
+  if (isPublicPage) {
+    return <>{children}</>;
+  }
+
+  if (isUserLoading || !user) {
+    if (isUserLoading && authWaitTimedOut) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background p-6">
+          <div className="w-full max-w-md space-y-4 rounded-xl border bg-card p-6 text-center shadow-sm">
+            <h1 className="text-xl font-semibold">A sessão está demorando para carregar</h1>
+            <p className="text-sm text-muted-foreground">
+              Verifique sua conexão e tente novamente. Você também pode entrar pela tela de login ou conhecer o app com dados de demonstração.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+              <Button variant="outline" asChild><Link href="/login">Ir para login</Link></Button>
+            </div>
+            <Link href="/demo" className="inline-block text-sm font-medium text-primary underline underline-offset-4">
+              Abrir demonstração
+            </Link>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader className="w-16 h-16 animate-spin text-primary" />
@@ -90,10 +125,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isAuthPage) {
-    return <>{children}</>;
-  }
-  
   const getInitials = (name?: string) => {
     if (!name) return '?';
     const names = name.split(' ');
