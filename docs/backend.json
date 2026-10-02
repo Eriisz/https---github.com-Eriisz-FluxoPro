@@ -221,8 +221,8 @@
           "description": "The current amount saved towards the goal."
         },
         "targetDate": {
-          "type": "string",
-          "description": "The target date to achieve the goal.",
+          "type": ["string", "null"],
+          "description": "The target date to achieve the goal, or null to save until the target amount is reached without a deadline.",
           "format": "date-time"
         }
       },

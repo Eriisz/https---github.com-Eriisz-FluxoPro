@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Pencil, Trash2, CalendarIcon } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, CalendarIcon, Target } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency } from '@/lib/utils';
 import type { Goal } from '@/lib/definitions';
@@ -36,9 +36,9 @@ import { useToast } from '@/hooks/use-toast';
 import { doc } from 'firebase/firestore';
 import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { revalidateDashboard } from '@/lib/actions';
 import { useData } from '@/context/DataContext';
+import { getGoalProgress } from '@/lib/goals';
 
 interface GoalCardProps {
   goal: Goal;
@@ -52,8 +52,7 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
   const { isBalanceVisible } = useData();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
 
-  const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
-  const remaining = goal.targetAmount - goal.currentAmount;
+  const { progress, remaining, isComplete } = getGoalProgress(goal);
   const hiddenValue = '•••••';
 
   const handleDelete = async () => {
@@ -109,7 +108,7 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
             </div>
             <p className="text-xs text-muted-foreground">
               {isBalanceVisible
-                ? (remaining > 0
+                ? (!isComplete
                   ? `${formatCurrency(remaining)} restantes para atingir sua meta.`
                   : 'Meta alcançada! Parabéns!')
                 : '••••• restantes para sua meta.'}
@@ -117,8 +116,10 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
           </div>
         </CardContent>
         <CardFooter className="flex justify-start items-center text-xs text-muted-foreground gap-2">
-            <CalendarIcon className="w-4 h-4"/>
-            <span>Data Alvo: {format(new Date(goal.targetDate), 'dd/MM/yyyy')}</span>
+            {goal.targetDate ? <CalendarIcon className="w-4 h-4" /> : <Target className="w-4 h-4" />}
+            <span>{goal.targetDate
+              ? `Data Alvo: ${format(new Date(goal.targetDate), 'dd/MM/yyyy')}`
+              : 'Até completar o valor total · Sem data limite'}</span>
         </CardFooter>
       </Card>
 

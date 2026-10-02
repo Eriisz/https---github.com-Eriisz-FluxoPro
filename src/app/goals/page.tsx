@@ -8,6 +8,7 @@ import type { Goal } from '@/lib/definitions';
 import { GoalCard } from '@/components/goals/GoalCard';
 import { GoalDialog } from '@/components/goals/GoalDialog';
 import { useData } from '@/context/DataContext';
+import { sortGoalsByTargetDate } from '@/lib/goals';
 
 export default function GoalsPage() {
   const { goals, isLoading } = useData();
@@ -37,7 +38,7 @@ export default function GoalsPage() {
     );
   }
 
-  const sortedGoals = (goals || []).sort((a,b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime());
+  const sortedGoals = sortGoalsByTargetDate(goals || []);
 
   return (
     <div className="flex flex-col gap-8">

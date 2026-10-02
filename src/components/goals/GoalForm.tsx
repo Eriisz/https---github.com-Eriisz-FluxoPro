@@ -4,7 +4,6 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
@@ -15,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -28,15 +28,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { revalidateDashboard } from '@/lib/actions';
-
-const formSchema = z.object({
-  name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
-  targetAmount: z.string().refine(v => !isNaN(parseFloat(v)), { message: 'Valor alvo inválido.'}),
-  currentAmount: z.string().refine(v => !isNaN(parseFloat(v)), { message: 'Valor atual inválido.'}),
-  targetDate: z.date({ required_error: 'Data alvo é obrigatória.'}),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { Switch } from '@/components/ui/switch';
+import { goalFormSchema, getGoalFormDefaults, getGoalFields, type GoalFormValues } from '@/lib/goals';
 
 interface GoalFormProps {
   existingGoal?: Goal;
@@ -49,17 +42,14 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
   const { toast } = useToast();
   const isEditing = !!existingGoal;
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: existingGoal?.name || '',
-      targetAmount: String(existingGoal?.targetAmount || ''),
-      currentAmount: String(existingGoal?.currentAmount || '0'),
-      targetDate: existingGoal ? new Date(existingGoal.targetDate) : new Date(),
-    },
+  const form = useForm<GoalFormValues>({
+    resolver: zodResolver(goalFormSchema),
+    defaultValues: getGoalFormDefaults(existingGoal),
   });
 
-  async function onSubmit(data: FormValues) {
+  const untilCompleted = form.watch('untilCompleted');
+
+  async function onSubmit(data: GoalFormValues) {
     if (!user) {
       toast({ title: 'Erro', description: 'Você precisa estar logado.', variant: 'destructive' });
       return;
@@ -71,10 +61,7 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
     const goalData: Goal = {
       id,
       userId: user.uid,
-      name: data.name,
-      targetAmount: parseFloat(data.targetAmount.replace(',', '.')),
-      currentAmount: parseFloat(data.currentAmount.replace(',', '.')),
-      targetDate: data.targetDate.toISOString(),
+      ...getGoalFields(data),
     };
 
     setDocumentNonBlocking(goalRef, goalData, { merge: true });
@@ -123,7 +110,7 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
           name="currentAmount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Valor Inicial (R$)</FormLabel>
+              <FormLabel>{isEditing ? 'Valor Acumulado (R$)' : 'Valor Inicial (R$)'}</FormLabel>
               <FormControl>
                 <Input type="text" placeholder="0,00" {...field} />
               </FormControl>
@@ -132,6 +119,23 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
           )}
         />
         <FormField
+          control={form.control}
+          name="untilCompleted"
+          render={({ field }) => (
+            <FormItem className="flex items-center justify-between gap-4 rounded-lg border p-3">
+              <div className="space-y-1">
+                <FormLabel>Até completar o valor total</FormLabel>
+                <FormDescription>
+                  Sem data limite. Conclua a meta ao atingir o valor alvo.
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch checked={field.value} onCheckedChange={field.onChange} onBlur={field.onBlur} ref={field.ref} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        {!untilCompleted && <FormField
           control={form.control}
           name="targetDate"
           render={({ field }) => (
@@ -169,7 +173,7 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
               <FormMessage />
             </FormItem>
           )}
-        />
+        />}
         <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
             {form.formState.isSubmitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Meta'}
         </Button>
