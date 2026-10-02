@@ -41,7 +41,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
             {isBalanceVisible ? formatCurrency(monthlyNet) : hiddenValue}
           </div>
           <p className="text-xs text-muted-foreground">
-            Diferença entre receitas e despesas
+            Receitas recebidas menos despesas pagas
           </p>
         </CardContent>
       </Card>
@@ -55,7 +55,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
         <CardContent>
           <div className="text-2xl font-bold text-primary">{isBalanceVisible ? formatCurrency(income) : hiddenValue}</div>
           <p className="text-xs text-muted-foreground">
-            Total de receitas no mês selecionado
+            Receitas recebidas no mês selecionado
           </p>
         </CardContent>
       </Card>
@@ -78,7 +78,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {budgetView === 'budget' ? 'Orçamento Restante' : 'Necessário para Quitar'}
           </CardTitle>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={toggleBudgetView}>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={toggleBudgetView} aria-label={budgetView === 'budget' ? 'Mostrar necessário para quitar' : 'Mostrar orçamento restante'}>
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </Button>
         </CardHeader>
@@ -98,7 +98,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
                 {isBalanceVisible ? formatCurrency(pendingExpenses) : hiddenValue}
               </div>
               <p className="text-xs text-muted-foreground">
-                Soma das despesas pendentes/atrasadas
+                Pendentes, atrasadas e a vencer no mês
               </p>
             </>
           )}

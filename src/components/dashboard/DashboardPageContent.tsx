@@ -95,7 +95,7 @@ export function DashboardPageContent() {
     const selectedMonthString = format(currentDate, 'yyyy-MM');
     const budgetForMonth = (budgets || []).find((budget) => budget.month === selectedMonthString);
     const totalBudget = budgetForMonth ? budgetForMonth.limit : 0;
-    const spentThisMonth = Math.abs(expenses);
+    const spentThisMonth = allExpenses;
 
     const categorySpending = (categories || [])
       .filter((category) => category.type === 'expense')
