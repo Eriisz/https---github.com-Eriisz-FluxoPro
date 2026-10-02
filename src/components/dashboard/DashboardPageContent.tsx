@@ -20,6 +20,7 @@ import {
   belongsToYear,
   sumMonthlyExpenses,
   sumMonthlyPendingExpenses,
+  sumMonthlyPendingIncome,
   sumSettledExpenses,
   sumSettledIncome,
 } from '@/lib/finance-engine';
@@ -35,6 +36,7 @@ type DashboardData = {
   recentTransactions: Transaction[];
   monthlyFlow: { month: string; income: number; expenses: number }[];
   pendingExpenses: number;
+  pendingIncome: number;
   selectedMonthTransactions: Transaction[];
   selectedYearTransactions: Transaction[];
 };
@@ -50,6 +52,7 @@ const initialDashboardData: DashboardData = {
   recentTransactions: [],
   monthlyFlow: [],
   pendingExpenses: 0,
+  pendingIncome: 0,
   selectedMonthTransactions: [],
   selectedYearTransactions: [],
 };
@@ -124,6 +127,7 @@ export function DashboardPageContent() {
     }).reverse();
 
     const pendingExpenses = sumMonthlyPendingExpenses(selectedMonthTransactions);
+    const pendingIncome = sumMonthlyPendingIncome(selectedMonthTransactions);
 
     setDashboardData({
       monthlyNet,
@@ -136,6 +140,7 @@ export function DashboardPageContent() {
       recentTransactions,
       monthlyFlow,
       pendingExpenses,
+      pendingIncome,
       selectedMonthTransactions,
       selectedYearTransactions,
     });
@@ -160,6 +165,7 @@ export function DashboardPageContent() {
     recentTransactions,
     monthlyFlow,
     pendingExpenses,
+    pendingIncome,
     selectedMonthTransactions,
     selectedYearTransactions,
   } = dashboardData;
@@ -179,6 +185,7 @@ export function DashboardPageContent() {
           budget={totalBudget}
           spent={spentThisMonth}
           pendingExpenses={pendingExpenses}
+          pendingIncome={pendingIncome}
         />
       </section>
 

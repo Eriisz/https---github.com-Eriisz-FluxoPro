@@ -94,6 +94,13 @@ export function sumMonthlyPendingExpenses(transactions: Transaction[]): number {
     .reduce((total, transaction) => total + Math.abs(transaction.value || 0), 0);
 }
 
+export function sumMonthlyPendingIncome(transactions: Transaction[]): number {
+  return transactions
+    .filter((transaction) => transaction.type === 'income' &&
+      (transaction.status === 'PENDING' || transaction.status === 'LATE'))
+    .reduce((total, transaction) => total + Math.abs(transaction.value || 0), 0);
+}
+
 export function sumSettledIncome(transactions: Transaction[]): number {
   return transactions
     .filter((transaction) => transaction.type === 'income' && isSettledStatus(transaction.status))

@@ -11,6 +11,7 @@ const {
   belongsToMonth,
   sumMonthlyExpenses,
   sumMonthlyPendingExpenses,
+  sumMonthlyPendingIncome,
   sumSettledExpenses,
   sumSettledIncome,
   buildInsights,
@@ -25,12 +26,23 @@ const transactions = [
   { type: 'expense', status: 'PENDING', value: -40, date: date(2, 28) },
   { type: 'income', status: 'RECEIVED', value: 200, date: date(2, 3) },
   { type: 'income', status: 'PENDING', value: 500, date: date(2, 28) },
+  { type: 'income', status: 'LATE', value: 75, date: date(2, 3) },
+  { type: 'income', status: 'PENDING', value: 999, date: date(3, 2) },
+  { type: 'income', status: 'LATE', value: 888, date: date(1, 28) },
   { type: 'expense', status: 'PENDING', value: -999, date: date(3, 2) },
   { type: 'expense', status: 'LATE', value: -888, date: date(1, 28) },
 ];
 const monthTransactions = transactions.filter((t) => belongsToMonth(t.date, selectedMonth));
 const expenses = sumMonthlyExpenses(monthTransactions);
 const pending = sumMonthlyPendingExpenses(monthTransactions);
+const receivable = sumMonthlyPendingIncome(monthTransactions);
+assert.equal(receivable, 575, 'include pending, late and upcoming income only in selected month');
+assert.equal(receivable - pending, 460, 'compare remaining receivables and payables');
+assert.equal(sumMonthlyPendingIncome([]), 0);
+const allReceived = monthTransactions.map((t) => t.type === 'income' ? { ...t, status: 'RECEIVED' } : t);
+assert.equal(sumMonthlyPendingIncome(allReceived), 0, 'received income no longer counts as receivable');
+assert.equal(sumMonthlyPendingIncome(allReceived) - pending, -115, 'show a shortfall when nothing remains to receive');
+assert.equal(sumMonthlyPendingIncome(transactions.filter((t) => belongsToMonth(t.date, new Date(2026, 3, 1)))), 999, 'changing month selects its receivables');
 
 assert.equal(expenses, 215, 'include paid, pending, late and upcoming expenses');
 assert.equal(pending, 115, 'exclude paid expenses and pending income from amount to settle');
