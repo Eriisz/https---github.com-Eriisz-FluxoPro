@@ -23,6 +23,7 @@ import { formatCurrency } from "@/lib/utils";
 import type { Goal } from "@/lib/definitions";
 import { PlusCircle, Target } from "lucide-react";
 import { GoalDialog } from '../goals/GoalDialog';
+import { getGoalProgress } from '@/lib/goals';
 
 interface GoalsCarouselProps {
   goals: Goal[];
@@ -68,7 +69,7 @@ export function GoalsCarousel({ goals }: GoalsCarouselProps) {
       </div>
       <CarouselContent>
         {goals.map((goal) => {
-            const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+            const { progress, isComplete } = getGoalProgress(goal);
             return (
                 <CarouselItem key={goal.id} className="md:basis-1/2 lg:basis-1/2">
                     <div className="p-1">
@@ -90,6 +91,11 @@ export function GoalsCarousel({ goals }: GoalsCarouselProps) {
                                 {progress.toFixed(0)}%
                             </span>
                             </div>
+                            {!goal.targetDate && (
+                              <p className="text-xs text-muted-foreground">
+                                {isComplete ? 'Meta alcançada! Parabéns!' : 'Até completar o valor total · Sem data limite'}
+                              </p>
+                            )}
                         </div>
                         </CardContent>
                     </Card>

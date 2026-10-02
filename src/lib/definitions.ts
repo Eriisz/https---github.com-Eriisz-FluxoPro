@@ -45,7 +45,7 @@ export type Goal = {
   name: string;
   targetAmount: number;
   currentAmount: number;
-  targetDate: string; // ISO string
+  targetDate: string | null; // ISO string, or null to save until the target amount is reached
 };
 
 export type User = {

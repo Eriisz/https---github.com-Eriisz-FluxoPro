@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import ts from 'typescript';
+
+const source = await readFile(new URL('../src/lib/goals.ts', import.meta.url), 'utf8');
+const { outputText } = ts.transpileModule(source, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+});
+const exports = {};
+new Function('require', 'exports', outputText)(createRequire(import.meta.url), exports);
+const { goalFormSchema, getGoalFields, getGoalFormDefaults, sortGoalsByTargetDate, getGoalProgress } = exports;
+
+const input = { name: 'Moto', targetAmount: '23000', currentAmount: '0', untilCompleted: true };
+const withoutDeadline = goalFormSchema.parse(input);
+const fields = getGoalFields(withoutDeadline);
+assert.equal(fields.targetDate, null, 'a goal can be created without a deadline');
+assert.equal(fields.targetAmount, 23000);
+assert.equal(fields.currentAmount, 0);
+assert.equal(goalFormSchema.safeParse({ ...input, untilCompleted: false }).success, false, 'dated goals require a date');
+const deadline = new Date('2027-06-01T12:00:00Z');
+assert.equal(goalFormSchema.safeParse({ ...input, untilCompleted: false, targetDate: new Date('invalid') }).success, false);
+const dated = getGoalFields(goalFormSchema.parse({ ...input, untilCompleted: false, targetDate: deadline }));
+assert.equal(dated.targetDate, deadline.toISOString());
+assert.equal(getGoalFields(goalFormSchema.parse({ ...input, targetDate: deadline })).targetDate, null, 'switching to no deadline clears a previously selected date');
+
+const savedGoal = { id: 'goal', userId: 'synthetic-user', ...fields };
+const restored = getGoalFormDefaults(JSON.parse(JSON.stringify(savedGoal)));
+assert.equal(restored.untilCompleted, true, 'reopening a saved goal retains the mode');
+assert.equal(getGoalFields(goalFormSchema.parse(restored)).targetDate, null);
+const oldGoal = { ...savedGoal, ...dated, id: 'dated' };
+const oldDefaults = getGoalFormDefaults(oldGoal);
+assert.equal(oldDefaults.untilCompleted, false, 'existing dated goals keep their deadline');
+assert.equal(oldDefaults.targetDate.toISOString(), deadline.toISOString());
+assert.equal(getGoalFormDefaults().untilCompleted, false);
+assert.equal(getGoalFormDefaults({ ...savedGoal, targetDate: undefined }).untilCompleted, true, 'missing dates do not become invalid Date');
+assert.equal({ ...oldGoal, ...getGoalFields(withoutDeadline) }.targetDate, null, 'merge updates explicitly replace old dates');
+assert.equal(getGoalFields(goalFormSchema.parse({ ...restored, untilCompleted: false, targetDate: deadline })).targetDate, deadline.toISOString(), 'goals can switch back to a deadline');
+
+const earlier = { ...oldGoal, id: 'earlier', targetDate: '2026-12-01T12:00:00Z' };
+const secondUndated = { ...savedGoal, id: 'other' };
+const original = [savedGoal, oldGoal, secondUndated, earlier];
+assert.deepEqual(sortGoalsByTargetDate(original).map(g => g.id), ['earlier', 'dated', 'goal', 'other']);
+assert.deepEqual(original, [savedGoal, oldGoal, secondUndated, earlier], 'sorting must not mutate provider state');
+assert.deepEqual(sortGoalsByTargetDate([savedGoal, secondUndated]), [savedGoal, secondUndated]);
+assert.deepEqual(getGoalProgress(savedGoal), { progress: 0, remaining: 23000, isComplete: false });
+assert.deepEqual(getGoalProgress({ ...savedGoal, currentAmount: 11500 }), { progress: 50, remaining: 11500, isComplete: false });
+assert.deepEqual(getGoalProgress({ ...savedGoal, currentAmount: 23000 }), { progress: 100, remaining: 0, isComplete: true });
+assert.deepEqual(getGoalProgress({ ...savedGoal, currentAmount: 24000 }), { progress: 100, remaining: 0, isComplete: true });
+console.log('Goal checks passed: no deadline, date validation, saved/edit modes, merge payload, ordering and completion.');
