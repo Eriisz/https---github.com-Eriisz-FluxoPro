@@ -62,6 +62,50 @@ export const EMPTY_FILTERS: SearchFilters = {
   allPeriods: false,
 };
 
+export function isSettledStatus(status: Transaction['status'] | string): boolean {
+  return status === 'PAID' || status === 'RECEIVED';
+}
+
+export function isOpenExpenseStatus(status: Transaction['status'] | string): boolean {
+  return status === 'PENDING' || status === 'LATE';
+}
+
+export function belongsToMonth(isoDate: string, monthDate: Date): boolean {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getFullYear() === monthDate.getFullYear() && date.getMonth() === monthDate.getMonth();
+}
+
+export function belongsToYear(isoDate: string, yearDate: Date): boolean {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getFullYear() === yearDate.getFullYear();
+}
+
+export function sumMonthlyExpenses(transactions: Transaction[]): number {
+  return transactions
+    .filter((transaction) => transaction.type === 'expense')
+    .reduce((total, transaction) => total + Math.abs(transaction.value || 0), 0);
+}
+
+export function sumMonthlyPendingExpenses(transactions: Transaction[]): number {
+  return transactions
+    .filter((transaction) => transaction.type === 'expense' && isOpenExpenseStatus(transaction.status))
+    .reduce((total, transaction) => total + Math.abs(transaction.value || 0), 0);
+}
+
+export function sumSettledIncome(transactions: Transaction[]): number {
+  return transactions
+    .filter((transaction) => transaction.type === 'income' && isSettledStatus(transaction.status))
+    .reduce((total, transaction) => total + transaction.value, 0);
+}
+
+export function sumSettledExpenses(transactions: Transaction[]): number {
+  return transactions
+    .filter((transaction) => transaction.type === 'expense' && isSettledStatus(transaction.status))
+    .reduce((total, transaction) => total + transaction.value, 0);
+}
+
 const PAGE_INDEX: Array<{ title: string; subtitle: string; href: string; keywords: string[] }> = [
   { title: 'Painel', subtitle: 'Visão geral e gráficos 2D', href: '/', keywords: ['painel', 'dashboard', 'inicio', 'graficos'] },
   { title: 'Pesquisa avançada', subtitle: 'Buscar e filtrar movimentações', href: '/search', keywords: ['pesquisa', 'busca', 'filtro', 'procurar'] },

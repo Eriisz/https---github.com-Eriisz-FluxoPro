@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { PageHeader } from "@/components/PageHeader";
 import { AdvancedFilters } from '@/components/search/AdvancedFilters';
-import { EMPTY_FILTERS, filterTransactions, type SearchFilters } from '@/lib/finance-engine';
+import { belongsToMonth, EMPTY_FILTERS, filterTransactions, type SearchFilters } from '@/lib/finance-engine';
 import {
   Card,
   CardContent,
@@ -20,8 +20,6 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
-import { startOfMonth, endOfMonth } from 'date-fns';
-import { formatCurrency } from '@/lib/utils';
 
 export default function HistoryPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -41,12 +39,9 @@ export default function HistoryPage() {
   }
 
   const monthlyTransactions = useMemo(() => {
-    const startOfSelectedMonth = startOfMonth(currentDate);
-    const endOfSelectedMonth = endOfMonth(currentDate);
     const scoped = (allTransactions || []).filter((transaction) => {
       if (filters.allPeriods || filters.dateFrom || filters.dateTo) return true;
-      const date = new Date(transaction.date);
-      return date >= startOfSelectedMonth && date <= endOfSelectedMonth;
+      return belongsToMonth(transaction.date, currentDate);
     });
 
     return filterTransactions(scoped, categories || [], accounts || [], filters);

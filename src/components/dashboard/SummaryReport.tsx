@@ -23,6 +23,7 @@ import { useData } from '@/context/DataContext';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { sumMonthlyExpenses, sumSettledIncome } from '@/lib/finance-engine';
 
 interface SummaryReportProps {
   monthlyData: Transaction[];
@@ -31,27 +32,19 @@ interface SummaryReportProps {
   periodDate: Date;
 }
 
-const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
-
 function calculateSummary(transactions: Transaction[]) {
-  const income = transactions
-    .filter(t => t.type === 'income' && paidOrReceivedStatuses.includes(t.status))
-    .reduce((acc, t) => acc + t.value, 0);
+  const income = sumSettledIncome(transactions);
+  const expenses = sumMonthlyExpenses(transactions);
+  const net = income - expenses;
 
-  const expenses = transactions
-    .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
-    .reduce((acc, t) => acc + t.value, 0);
-
-  const net = income + expenses;
-
-  return { income, expenses: Math.abs(expenses), net };
+  return { income, expenses, net };
 }
 
 function getTopSpendingCategories(transactions: Transaction[], categories: Category[]) {
     const spendingMap = new Map<string, number>();
 
     transactions
-        .filter(t => t.type === 'expense' && paidOrReceivedStatuses.includes(t.status))
+        .filter(t => t.type === 'expense')
         .forEach(t => {
             const currentTotal = spendingMap.get(t.categoryId) || 0;
             spendingMap.set(t.categoryId, currentTotal + Math.abs(t.value));

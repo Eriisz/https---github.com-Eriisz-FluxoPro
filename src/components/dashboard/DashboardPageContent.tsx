@@ -6,7 +6,7 @@ import { OverviewCards } from '@/components/dashboard/OverviewCards';
 import { CategoryChart, MonthlyFlowChart } from '@/components/dashboard/Charts';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { TransactionDialog } from '@/components/transactions/TransactionDialog';
-import { subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
+import { subMonths, format } from 'date-fns';
 import { Loader } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { GoalsCarousel } from '@/components/dashboard/GoalsCarousel';
@@ -15,6 +15,14 @@ import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
 import { InsightsBanner } from '@/components/dashboard/InsightsBanner';
 import { CashFlowForecast } from '@/components/dashboard/CashFlowForecast';
 import type { Transaction } from '@/lib/definitions';
+import {
+  belongsToMonth,
+  belongsToYear,
+  sumMonthlyExpenses,
+  sumMonthlyPendingExpenses,
+  sumSettledExpenses,
+  sumSettledIncome,
+} from '@/lib/finance-engine';
 
 type DashboardData = {
   monthlyNet: number;
@@ -69,51 +77,32 @@ export function DashboardPageContent() {
 
     setIsCalculating(true);
 
-    const selectedMonthStart = startOfMonth(currentDate);
-    const selectedMonthEnd = endOfMonth(currentDate);
-    const selectedYearStart = startOfYear(currentDate);
-    const selectedYearEnd = endOfYear(currentDate);
     const transactions = allTransactions || [];
 
-    const selectedMonthTransactions = transactions.filter((transaction) => {
-      const transactionDate = new Date(transaction.date);
-      return transactionDate >= selectedMonthStart && transactionDate <= selectedMonthEnd;
-    });
+    const selectedMonthTransactions = transactions.filter((transaction) =>
+      belongsToMonth(transaction.date, currentDate),
+    );
 
-    const selectedYearTransactions = transactions.filter((transaction) => {
-      const transactionDate = new Date(transaction.date);
-      return transactionDate >= selectedYearStart && transactionDate <= selectedYearEnd;
-    });
+    const selectedYearTransactions = transactions.filter((transaction) =>
+      belongsToYear(transaction.date, currentDate),
+    );
 
-    const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
-    const income = selectedMonthTransactions
-      .filter((transaction) => transaction.type === 'income' && paidOrReceivedStatuses.includes(transaction.status))
-      .reduce((total, transaction) => total + transaction.value, 0);
-    const expenses = selectedMonthTransactions
-      .filter((transaction) => transaction.type === 'expense' && paidOrReceivedStatuses.includes(transaction.status))
-      .reduce((total, transaction) => total + transaction.value, 0);
-    const allExpenses = selectedMonthTransactions
-      .filter((transaction) => transaction.type === 'expense')
-      .reduce((total, transaction) => total + Math.abs(transaction.value), 0);
+    const income = sumSettledIncome(selectedMonthTransactions);
+    const expenses = sumSettledExpenses(selectedMonthTransactions);
+    const allExpenses = sumMonthlyExpenses(selectedMonthTransactions);
     const monthlyNet = income + expenses;
 
     const selectedMonthString = format(currentDate, 'yyyy-MM');
     const budgetForMonth = (budgets || []).find((budget) => budget.month === selectedMonthString);
     const totalBudget = budgetForMonth ? budgetForMonth.limit : 0;
-    const spentThisMonth = selectedMonthTransactions
-      .filter((transaction) => transaction.type === 'expense' && paidOrReceivedStatuses.includes(transaction.status))
-      .reduce((total, transaction) => total + Math.abs(transaction.value), 0);
+    const spentThisMonth = Math.abs(expenses);
 
     const categorySpending = (categories || [])
       .filter((category) => category.type === 'expense')
       .map((category) => {
-        const total = selectedMonthTransactions
-          .filter((transaction) =>
-            transaction.categoryId === category.id &&
-            transaction.type === 'expense' &&
-            paidOrReceivedStatuses.includes(transaction.status),
-          )
-          .reduce((sum, transaction) => sum + Math.abs(transaction.value), 0);
+        const total = sumMonthlyExpenses(
+          selectedMonthTransactions.filter((transaction) => transaction.categoryId === category.id),
+        );
         return { category: category.name, total, fill: category.color };
       })
       .filter((category) => category.total > 0);
@@ -122,33 +111,19 @@ export function DashboardPageContent() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const monthlyFlow = Array.from({ length: 12 }, (_, index) => {
-      const monthDate = subMonths(new Date(), index);
-      const start = startOfMonth(monthDate);
-      const end = endOfMonth(monthDate);
-      const monthTransactions = transactions.filter((transaction) => {
-        const transactionDate = new Date(transaction.date);
-        return transactionDate >= start &&
-          transactionDate <= end &&
-          paidOrReceivedStatuses.includes(transaction.status);
-      });
+      const monthDate = subMonths(currentDate, index);
+      const monthTransactions = transactions.filter((transaction) =>
+        belongsToMonth(transaction.date, monthDate),
+      );
 
       return {
-        month: start.toLocaleString('pt-BR', { month: 'short' }),
-        income: monthTransactions
-          .filter((transaction) => transaction.type === 'income')
-          .reduce((sum, transaction) => sum + transaction.value, 0),
-        expenses: monthTransactions
-          .filter((transaction) => transaction.type === 'expense')
-          .reduce((sum, transaction) => sum + transaction.value, 0),
+        month: monthDate.toLocaleString('pt-BR', { month: 'short' }),
+        income: sumSettledIncome(monthTransactions),
+        expenses: sumMonthlyExpenses(monthTransactions),
       };
-    }).reverse().map((month) => ({ ...month, expenses: Math.abs(month.expenses) }));
+    }).reverse();
 
-    const pendingExpenses = selectedMonthTransactions
-      .filter((transaction) =>
-        transaction.type === 'expense' &&
-        (transaction.status === 'PENDING' || transaction.status === 'LATE'),
-      )
-      .reduce((total, transaction) => total + Math.abs(transaction.value), 0);
+    const pendingExpenses = sumMonthlyPendingExpenses(selectedMonthTransactions);
 
     setDashboardData({
       monthlyNet,
@@ -178,7 +153,6 @@ export function DashboardPageContent() {
   const {
     monthlyNet,
     income,
-    expenses,
     allExpenses,
     totalBudget,
     spentThisMonth,
@@ -211,7 +185,7 @@ export function DashboardPageContent() {
       <InsightsBanner
         isDemo={isDemo}
         income={income}
-        expenses={expenses}
+        expenses={allExpenses}
         categorySpending={categorySpending}
         pendingExpenses={pendingExpenses}
         budget={totalBudget}

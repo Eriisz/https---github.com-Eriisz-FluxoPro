@@ -69,7 +69,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
         <CardContent>
           <div className="text-2xl font-bold text-destructive">{isBalanceVisible ? formatCurrency(Math.abs(expenses)) : hiddenValue}</div>
            <p className="text-xs text-muted-foreground">
-            Total de despesas no mês selecionado
+            Pagas, pendentes, atrasadas e a vencer no mês
           </p>
         </CardContent>
       </Card>
