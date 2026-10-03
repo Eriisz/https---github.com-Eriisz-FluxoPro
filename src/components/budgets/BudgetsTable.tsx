@@ -34,8 +34,8 @@ import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { format, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { doc } from 'firebase/firestore';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { confirmWrite } from '@/lib/write-feedback';
 import { revalidateDashboard } from '@/lib/actions';
 
 interface BudgetsTableProps {
@@ -58,8 +58,8 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
   const handleConfirmDelete = async () => {
     if (user && budgetToDelete) {
       const budgetRef = doc(firestore, `users/${user.uid}/budgets`, budgetToDelete.id);
-      deleteDocumentNonBlocking(budgetRef);
-      await revalidateDashboard();
+      if (!await confirmWrite(deleteDoc(budgetRef), toast)) return;
+      await revalidateDashboard().catch(() => undefined);
       toast({
         title: 'Sucesso!',
         description: 'Orçamento deletado com sucesso.',

@@ -1,3 +1,5 @@
+import { parseMoney } from './money';
+
 export interface ParsedCsv {
   headers: string[];
   rows: string[][];
@@ -79,35 +81,13 @@ export function normalizeCsvHeader(value: string): string {
 }
 
 export function parseCsvAmount(rawValue: string): number | null {
-  let value = rawValue.trim().replace(/[R$\s\u00a0]/g, '').replace(/[−–]/g, '-');
-  if (!value) return null;
-
-  const wrappedInParentheses = value.startsWith('(') && value.endsWith(')');
-  if (wrappedInParentheses) value = value.slice(1, -1);
-  value = value.replace(/[^\d,.-]/g, '');
-
-  const lastComma = value.lastIndexOf(',');
-  const lastDot = value.lastIndexOf('.');
-  if (lastComma >= 0 && lastDot >= 0) {
-    const decimalSeparator = lastComma > lastDot ? ',' : '.';
-    const thousandsSeparator = decimalSeparator === ',' ? '.' : ',';
-    value = value.split(thousandsSeparator).join('');
-    if (decimalSeparator === ',') value = value.replace(',', '.');
-  } else if (lastComma >= 0) {
-    const decimalPlaces = value.length - lastComma - 1;
-    value = decimalPlaces > 0 && decimalPlaces <= 2
-      ? value.replace(',', '.')
-      : value.replace(/,/g, '');
-  } else if (lastDot >= 0) {
-    const decimalPlaces = value.length - lastDot - 1;
-    if (decimalPlaces === 3 && /^\-?\d{1,3}(?:\.\d{3})+$/.test(value)) {
-      value = value.replace(/\./g, '');
-    }
-  }
-
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return null;
-  return wrappedInParentheses ? -Math.abs(amount) : amount;
+  let value = rawValue.trim().replace(/[−–]/g, '-');
+  const parenthesized = value.startsWith('(') && value.endsWith(')');
+  if (parenthesized) value = value.slice(1, -1).trim();
+  // Accept well-formed international grouping in bank exports as well as BRL.
+  if (/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(value)) value = value.replace(/,/g, '');
+  const amount = parseMoney(value);
+  return amount === null ? null : parenthesized ? -Math.abs(amount) : amount;
 }
 
 export function parseCsvDate(rawValue: string): Date | null {
@@ -126,15 +106,15 @@ export function parseCsvDate(rawValue: string): Date | null {
     return date;
   }
 
-  const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?$/);
   if (isoDate) {
     const date = new Date(Number(isoDate[1]), Number(isoDate[2]) - 1, Number(isoDate[3]), 12, 0, 0);
-    if (Number.isNaN(date.getTime())) return null;
+    if (date.getFullYear() !== Number(isoDate[1]) || date.getMonth() !== Number(isoDate[2]) - 1 || date.getDate() !== Number(isoDate[3])) return null;
+    if (value.includes('T') && Number.isNaN(new Date(value).getTime())) return null;
     return date;
   }
 
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  return null;
 }
 
 export function guessCsvColumn(

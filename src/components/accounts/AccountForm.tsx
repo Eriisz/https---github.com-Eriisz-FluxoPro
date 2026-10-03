@@ -5,6 +5,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { isMoney, parseMoney } from '@/lib/money';
 
 import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -26,8 +27,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Account } from '@/lib/definitions';
-import { doc, collection } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, collection, setDoc } from 'firebase/firestore';
+import { confirmWrite } from '@/lib/write-feedback';
 import { revalidateDashboard } from '@/lib/actions';
 
 
@@ -36,8 +37,8 @@ const formSchema = z.object({
   type: z.enum(['ContaCorrente', 'CartaoCredito', 'Investimento', 'Outro'], {
     required_error: 'Selecione um tipo de conta.',
   }),
-  initialBalance: z.string().optional(),
-  limit: z.string().optional(),
+  initialBalance: z.string().refine(v => !v.trim() || isMoney(v, -Number.MAX_VALUE), 'Saldo inválido.').optional(),
+  limit: z.string().refine(v => !v.trim() || isMoney(v), 'Limite inválido.').optional(),
 }).refine(data => {
     if (data.type !== 'CartaoCredito' && (data.initialBalance === undefined || data.initialBalance.trim() === '')) {
       return false;
@@ -90,8 +91,8 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     const accountRef = doc(firestore, `users/${user.uid}/accounts`, id);
 
     let initialBalanceValue = 0;
-    if (data.initialBalance) {
-        initialBalanceValue = parseFloat(data.initialBalance.replace(',', '.'));
+    if (data.initialBalance?.trim()) {
+        initialBalanceValue = parseMoney(data.initialBalance)!;
     }
 
     const accountData: Partial<Account> = {
@@ -102,12 +103,13 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
       initialBalance: initialBalanceValue,
     };
 
+    accountData.limit = null;
     if (data.type === 'CartaoCredito') {
-        accountData.limit = data.limit ? parseFloat(data.limit.replace(',', '.')) : 0;
+        accountData.limit = data.limit?.trim() ? parseMoney(data.limit)! : 0;
     }
     
-    setDocumentNonBlocking(accountRef, accountData, { merge: true });
-    await revalidateDashboard();
+    if (!await confirmWrite(setDoc(accountRef, accountData, { merge: true }), toast)) return;
+    await revalidateDashboard().catch(() => undefined);
     
     toast({
         title: 'Sucesso!',

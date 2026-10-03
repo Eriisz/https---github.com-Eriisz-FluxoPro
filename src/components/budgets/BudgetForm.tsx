@@ -5,6 +5,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { isMoney, parseMoney } from '@/lib/money';
 import { format } from 'date-fns';
 import { Calculator as CalculatorIcon } from 'lucide-react';
 
@@ -21,15 +22,15 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { Budget } from '@/lib/definitions';
-import { doc, collection } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, collection, setDoc } from 'firebase/firestore';
+import { confirmWrite } from '@/lib/write-feedback';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calculator } from '../shared/Calculator';
 import { revalidateDashboard } from '@/lib/actions';
 
 const formSchema = z.object({
-  limit: z.string().min(1, 'Limite é obrigatório.'),
-  month: z.string().regex(/^\d{4}-\d{2}$/, 'Mês deve estar no formato AAAA-MM.'),
+  limit: z.string().refine(v => isMoney(v, 0.01), 'Informe um limite válido maior que zero.'),
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mês deve estar no formato AAAA-MM.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -65,12 +66,12 @@ export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
     const budgetData = {
       id,
       userId: user.uid,
-      limit: parseFloat(data.limit.replace(',', '.')),
+      limit: parseMoney(data.limit)!,
       month: data.month,
     };
 
-    setDocumentNonBlocking(budgetRef, budgetData, { merge: true });
-    await revalidateDashboard();
+    if (!await confirmWrite(setDoc(budgetRef, budgetData, { merge: true }), toast)) return;
+    await revalidateDashboard().catch(() => undefined);
     
     toast({
         title: 'Sucesso!',

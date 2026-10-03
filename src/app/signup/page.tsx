@@ -17,8 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DollarSign } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { doc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { FirebaseError } from 'firebase/app';
 
@@ -51,8 +50,9 @@ export default function SignupPage() {
         if (userCredential && userCredential.user) {
             const user = userCredential.user;
             const userRef = doc(firestore, 'users', user.uid);
-            setDocumentNonBlocking(userRef, {
+            await setDoc(userRef, {
                 id: user.uid,
+                userId: user.uid,
                 name: name,
                 phoneNumber: phone,
                 createdAt: new Date().toISOString(),

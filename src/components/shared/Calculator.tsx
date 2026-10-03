@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { calculate } from '@/lib/calculator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -17,15 +18,13 @@ export function Calculator({ onValueChange, onClose }: CalculatorProps) {
       setInput('');
     } else if (value === '=') {
       try {
-        // eslint-disable-next-line no-eval
-        const result = eval(input.replace('x', '*').replace(',', '.'));
-        onValueChange(parseFloat(result.toFixed(2)));
+        onValueChange(calculate(input));
         onClose();
       } catch (error) {
         setInput('Erro');
       }
     } else {
-      setInput(input + value);
+      setInput((input === 'Erro' ? '' : input) + value);
     }
   };
 
@@ -49,6 +48,7 @@ export function Calculator({ onValueChange, onClose }: CalculatorProps) {
       <div className="grid grid-cols-4 gap-2">
         {buttons.map((btn) => (
           <Button
+            type="button"
             key={btn}
             onClick={() => handleButtonClick(btn)}
             variant={['C', '=', '/', '*', '-', '+'].includes(btn) ? 'secondary' : 'outline'}

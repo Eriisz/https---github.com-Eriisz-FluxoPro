@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { isMoney, parseMoney } from './money';
 import type { Goal } from '@/lib/definitions';
 
 const goalFields = {
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
-  targetAmount: z.string().refine(v => !isNaN(parseFloat(v)), { message: 'Valor alvo inválido.' }),
-  currentAmount: z.string().refine(v => !isNaN(parseFloat(v)), { message: 'Valor atual inválido.' }),
+  targetAmount: z.string().refine(v => isMoney(v, 0.01), { message: 'Informe um valor alvo válido maior que zero.' }),
+  currentAmount: z.string().refine(v => isMoney(v), { message: 'Informe um valor acumulado válido, igual ou maior que zero.' }),
 };
 
 export const goalFormSchema = z.discriminatedUnion('untilCompleted', [
@@ -35,8 +36,8 @@ export function getGoalFormDefaults(goal?: Goal): GoalFormValues {
 export function getGoalFields(data: GoalFormValues): Omit<Goal, 'id' | 'userId'> {
   return {
     name: data.name,
-    targetAmount: parseFloat(data.targetAmount.replace(',', '.')),
-    currentAmount: parseFloat(data.currentAmount.replace(',', '.')),
+    targetAmount: parseMoney(data.targetAmount)!,
+    currentAmount: parseMoney(data.currentAmount)!,
     // Explicit null clears a previous deadline when updating with merge: true.
     targetDate: data.untilCompleted ? null : data.targetDate.toISOString(),
   };
@@ -56,4 +57,11 @@ export function getGoalProgress(goal: Goal) {
     remaining: Math.max(0, goal.targetAmount - goal.currentAmount),
     isComplete: goal.targetAmount > 0 && goal.currentAmount >= goal.targetAmount,
   };
+}
+
+export function contributionTotal(current: number, target: number, amount: number): number {
+  const cents = [current, target, amount].map(value => Math.round(value * 100));
+  if (!cents.every(Number.isSafeInteger) || cents[0] < 0 || cents[1] <= 0 || cents[2] <= 0) throw new Error('Valor do aporte inválido.');
+  if (cents[0] + cents[2] > cents[1]) throw new Error('O aporte excede o valor restante da meta.');
+  return (cents[0] + cents[2]) / 100;
 }

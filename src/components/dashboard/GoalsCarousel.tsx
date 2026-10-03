@@ -1,6 +1,8 @@
 
 'use client';
 
+import { GoalContribution } from '@/components/goals/GoalContribution';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import {
@@ -24,12 +26,14 @@ import type { Goal } from "@/lib/definitions";
 import { PlusCircle, Target } from "lucide-react";
 import { GoalDialog } from '../goals/GoalDialog';
 import { getGoalProgress } from '@/lib/goals';
+import { useData } from '@/context/DataContext';
 
 interface GoalsCarouselProps {
   goals: Goal[];
 }
 
 export function GoalsCarousel({ goals }: GoalsCarouselProps) {
+  const { isBalanceVisible } = useData();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   if (!goals || goals.length === 0) {
@@ -77,26 +81,27 @@ export function GoalsCarousel({ goals }: GoalsCarouselProps) {
                         <CardHeader>
                         <CardTitle>{goal.name}</CardTitle>
                         <CardDescription>
-                            Alvo: {formatCurrency(goal.targetAmount)}
+                            Alvo: {isBalanceVisible ? formatCurrency(goal.targetAmount) : '•••••'}
                         </CardDescription>
                         </CardHeader>
                         <CardContent>
                         <div className="space-y-2">
-                            <Progress value={progress} />
+                            <Progress value={isBalanceVisible ? progress : 0} />
                             <div className="flex justify-between text-sm">
                             <span className="font-medium text-primary">
-                                {formatCurrency(goal.currentAmount)}
+                                {isBalanceVisible ? formatCurrency(goal.currentAmount) : '•••••'}
                             </span>
                             <span className="text-muted-foreground">
-                                {progress.toFixed(0)}%
+                                {isBalanceVisible ? `${progress.toFixed(0)}%` : '•••••'}
                             </span>
                             </div>
                             {!goal.targetDate && (
                               <p className="text-xs text-muted-foreground">
-                                {isComplete ? 'Meta alcançada! Parabéns!' : 'Até completar o valor total · Sem data limite'}
+                                {isBalanceVisible && isComplete ? 'Meta alcançada! Parabéns!' : 'Até completar o valor total · Sem data limite'}
                               </p>
                             )}
                         </div>
+                        <GoalContribution goal={goal} />
                         </CardContent>
                     </Card>
                     </div>

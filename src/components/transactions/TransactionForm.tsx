@@ -4,9 +4,10 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { transactionFormSchema, buildTransactions, editableStatus, transactionChanges, type TransactionFormValues } from '@/lib/transactions';
+import { replaceTransactions } from '@/lib/transaction-writes';
 import { CalendarIcon, Calculator as CalculatorIcon, PlusCircle } from 'lucide-react';
-import { format, isPast, startOfToday } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import { useUser, useFirestore } from '@/firebase';
@@ -36,7 +37,6 @@ import { cn } from '@/lib/utils';
 import type { Account, Category, Transaction } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
 import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
-import { addMonths } from 'date-fns';
 import { useData } from '@/context/DataContext';
 import { AccountDialog } from '../accounts/AccountDialog';
 import { revalidateDashboard } from '@/lib/actions';
@@ -49,20 +49,7 @@ interface TransactionFormProps {
     transaction?: Transaction;
 }
 
-const formSchema = z.object({
-    description: z.string().min(2, { message: "Descrição precisa ter ao menos 2 caracteres." }),
-    value: z.string().refine(val => !isNaN(parseFloat(val.replace(',', '.'))), { message: "Valor inválido." }),
-    date: z.date(),
-    accountId: z.string().min(1, { message: "Selecione uma conta." }),
-    categoryId: z.string().min(1, { message: "Selecione uma categoria." }),
-    type: z.enum(['income', 'expense'], { required_error: "Selecione o tipo." }),
-    status: z.enum(['PAID', 'PENDING', 'RECEIVED', 'LATE'], { required_error: "Selecione um status." }),
-    frequency: z.enum(['single', 'installment', 'recurring']).default('single'),
-    installments: z.string().optional(),
-    updateScope: z.enum(['current', 'future', 'all']).default('current').optional(),
-  });
-
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = TransactionFormValues;
 
 export function TransactionForm({ accounts: initialAccounts, categories: initialCategories, onFormSubmit, transaction }: TransactionFormProps) {
   const { user, isUserLoading } = useUser();
@@ -76,7 +63,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
   
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(transactionFormSchema),
     defaultValues: isEditing ? {
         description: transaction.description,
         value: String(Math.abs(transaction.value)),
@@ -84,7 +71,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
         accountId: transaction.accountId,
         categoryId: transaction.categoryId,
         type: transaction.type,
-        status: (transaction.status === 'PENDING' && isPast(new Date(transaction.date)) && new Date(transaction.date) < startOfToday()) ? 'LATE' : transaction.status,
+        status: editableStatus(transaction),
         frequency: transaction.groupId ? (transaction.installments ? 'installment' : 'recurring') : 'single',
         installments: String(transaction.installments?.total || '1'),
         updateScope: 'current'
@@ -103,6 +90,13 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
 
   const transactionFrequency = form.watch('frequency');
   const transactionType = form.watch('type');
+  const installmentCount = form.watch('installments');
+  const originalFrequency = transaction?.groupId ? (transaction.installments ? 'installment' : 'recurring') : 'single';
+  const isRestructuring = isEditing && (transactionFrequency !== originalFrequency ||
+    (originalFrequency === 'installment' && Number(installmentCount) !== transaction?.installments?.total));
+  useEffect(() => {
+    if (isRestructuring) form.setValue('value', '');
+  }, [isRestructuring, form]);
   
   const allCategories = categories || initialCategories;
   const allAccounts = accounts || initialAccounts;
@@ -127,27 +121,17 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
   
     const batch = writeBatch(firestore);
   
-    let finalStatus = data.status === 'LATE' ? 'PENDING' : data.status;
-    const updateData: any = {
-      description: data.description,
-      value: data.type === 'expense' ? -parseFloat(data.value.replace(',', '.')) : parseFloat(data.value.replace(',', '.')),
-      accountId: data.accountId,
-      categoryId: data.categoryId,
-      type: data.type,
-      status: finalStatus,
-    };
-  
     if (data.updateScope === 'current' || !transaction.groupId) {
       const docRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
-      batch.update(docRef, {...updateData, date: data.date.toISOString()});
+      batch.update(docRef, {...transactionChanges(data, transaction, transaction), date: data.date.toISOString()});
     } else {
       // For recurring/installment, we only update some fields, preserving original date and installment count
-      const { ...restOfUpdateData } = updateData;
 
       const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
       const q = query(transactionsCol, where('groupId', '==', transaction.groupId));
       const querySnapshot = await getDocs(q);
   
+      if (querySnapshot.size > 500) throw new Error('Grupo excede o limite de uma atualização atômica.');
       querySnapshot.forEach(docSnap => {
         const currentTransaction = docSnap.data() as Transaction;
         const currentDate = new Date(currentTransaction.date);
@@ -161,7 +145,8 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
         }
   
         if (shouldUpdate) {
-          batch.update(docSnap.ref, restOfUpdateData);
+          const changes = transactionChanges(data, transaction, currentTransaction);
+          if (Object.keys(changes).length) batch.update(docSnap.ref, changes);
         }
       });
     }
@@ -180,6 +165,11 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
         return;
     }
 
+    if (!allAccounts.some(account => account.id === data.accountId) ||
+        !allCategories.some(category => category.id === data.categoryId && category.type === data.type)) {
+      toast({ variant: 'destructive', title: 'Seleção inválida', description: 'Selecione uma conta e uma categoria compatível com o tipo de transação.' });
+      return;
+    }
     setIsSubmitting(true);
 
     // If recurring, we don't show the input, so we set a default value here.
@@ -197,77 +187,26 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
         const isFrequencyChanged = isEditing && originalFrequency !== newFrequency;
         const isInstallmentCountChanged = isEditing && originalFrequency === 'installment' && originalInstallmentCount !== newInstallmentCount;
         
-        const isRecurringToFinite = isEditing && originalFrequency === 'recurring' && newInstallmentCount > 1;
 
-        if (isEditing && !isFrequencyChanged && !isInstallmentCountChanged && !isRecurringToFinite) {
+        if (isEditing && !isFrequencyChanged && !isInstallmentCountChanged) {
             // ===== NON-DESTRUCTIVE EDIT =====
             await handleUpdateTransactions(data);
             toast({ title: "Sucesso!", description: "Transação(ões) atualizada(s) com sucesso!" });
         } else {
             // ===== CREATE NEW OR DESTRUCTIVE EDIT =====
 
-            // If it's a destructive edit, delete the old transactions first.
-            if (isEditing) {
-                const batchDelete = writeBatch(firestore);
-                const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
-                if (transaction?.groupId) {
-                    const q = query(transactionsCol, where('groupId', '==', transaction.groupId));
-                    const querySnapshot = await getDocs(q);
-                    querySnapshot.forEach(doc => batchDelete.delete(doc.ref));
-                } else { // was a single transaction
-                    batchDelete.delete(doc(transactionsCol, transaction.id));
-                }
-                await batchDelete.commit();
+            if (isEditing && transaction?.groupId && data.updateScope !== 'all') {
+                throw new Error('Para mudar a frequência ou o número de parcelas, selecione todas as transações do grupo.');
             }
-
-            // Now, create the new transaction(s)
-            const batchCreate = writeBatch(firestore);
             const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
-            const groupId = newFrequency !== 'single' ? doc(collection(firestore, '_')).id : undefined;
-            const totalValue = parseFloat(data.value.replace(',', '.'));
-            
-            for (let i = 0; i < newInstallmentCount; i++) {
-                const transactionDate = addMonths(data.date, i);
-                
-                let installmentValue = totalValue;
-                if (newFrequency === 'installment') {
-                    installmentValue = totalValue / newInstallmentCount;
-                }
-
-                const transactionValue = data.type === 'expense' ? -installmentValue : installmentValue;
-                let finalStatus = data.status === 'LATE' ? 'PENDING' : data.status;
-
-                const transactionId = doc(collection(firestore, '_')).id;
-                const newTransactionData: Transaction = {
-                    id: transactionId,
-                    userId: user.uid,
-                    description: data.description,
-                    value: transactionValue,
-                    date: transactionDate.toISOString(),
-                    accountId: data.accountId,
-                    categoryId: data.categoryId || '',
-                    type: data.type,
-                    status: finalStatus,
-                };
-
-                if(groupId) {
-                    newTransactionData.groupId = groupId;
-                }
-
-                if (newFrequency === 'installment' && newInstallmentCount > 1) {
-                    newTransactionData.installments = { current: i + 1, total: newInstallmentCount };
-                }
-                
-                const newDocRef = doc(transactionsCol, transactionId);
-                batchCreate.set(newDocRef, newTransactionData);
-            }
-            await batchCreate.commit();
+            const replacements = buildTransactions(data, user.uid, () => doc(transactionsCol).id);
+            await replaceTransactions(firestore, user.uid, replacements, transaction);
 
             const toastMessage = isEditing ? "Transação reestruturada com sucesso!" : `Transação ${newInstallmentCount > 1 ? newFrequency : ''} adicionada com sucesso!`;
             toast({ title: "Sucesso!", description: toastMessage });
         }
 
-        await revalidateDashboard();
+        await revalidateDashboard().catch(() => undefined);
         form.reset();
         onFormSubmit();
 
@@ -276,7 +215,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
         toast({
             variant: 'destructive',
             title: "Erro ao processar transação",
-            description: "Ocorreu um erro inesperado. Tente novamente.",
+            description: error instanceof Error ? error.message : "Não foi possível salvar. Tente novamente.",
         });
     } finally {
         setIsSubmitting(false);
@@ -390,7 +329,9 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
           name="value"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Valor</FormLabel>
+              <FormLabel>{transactionFrequency === 'installment' && (!isEditing || isRestructuring) ? 'Valor total (R$)' : 'Valor (R$)'}</FormLabel>
+              {isRestructuring && <p className="text-sm text-muted-foreground">Informe novamente o valor. Ao parcelar, este será o total dividido entre as novas parcelas. O grupo será recriado a partir da data selecionada.</p>}
+              {isEditing && !isRestructuring && transactionFrequency === 'installment' && <p className="text-sm text-muted-foreground">Valor desta parcela. Se alterar o valor e selecionar o grupo, cada parcela selecionada receberá o valor informado.</p>}
               <div className="relative">
                 <FormControl>
                   <Input placeholder="0,00" {...field} />

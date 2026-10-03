@@ -22,8 +22,8 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { Goal } from '@/lib/definitions';
-import { doc, collection } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, collection, setDoc } from 'firebase/firestore';
+import { confirmWrite } from '@/lib/write-feedback';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
@@ -64,8 +64,8 @@ export function GoalForm({ existingGoal, onFormSubmit }: GoalFormProps) {
       ...getGoalFields(data),
     };
 
-    setDocumentNonBlocking(goalRef, goalData, { merge: true });
-    await revalidateDashboard();
+    if (!await confirmWrite(setDoc(goalRef, goalData, { merge: true }), toast)) return;
+    await revalidateDashboard().catch(() => undefined);
     
     toast({
         title: 'Sucesso!',

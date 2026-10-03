@@ -32,8 +32,8 @@ import type { Category } from '@/lib/definitions';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
-import { doc } from 'firebase/firestore';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { deleteUnusedReference } from '@/lib/reference-writes';
+import { confirmWrite } from '@/lib/write-feedback';
 import { revalidateDashboard } from '@/lib/actions';
 
 interface CategoriesTableProps {
@@ -55,9 +55,8 @@ export function CategoriesTable({ categories, onEdit }: CategoriesTableProps) {
 
   const handleConfirmDelete = async () => {
     if (user && categoryToDelete) {
-      const categoryRef = doc(firestore, `users/${user.uid}/categories`, categoryToDelete.id);
-      deleteDocumentNonBlocking(categoryRef);
-      await revalidateDashboard();
+      if (!await confirmWrite(deleteUnusedReference(firestore, user.uid, 'categories', categoryToDelete.id), toast)) return;
+      await revalidateDashboard().catch(() => undefined);
       toast({
         title: 'Sucesso!',
         description: 'Categoria deletada com sucesso.',
