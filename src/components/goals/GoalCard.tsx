@@ -1,6 +1,8 @@
 
 'use client';
 
+import { GoalContribution } from '@/components/goals/GoalContribution';
+
 import React from 'react';
 import {
   Card,
@@ -33,8 +35,8 @@ import { formatCurrency } from '@/lib/utils';
 import type { Goal } from '@/lib/definitions';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { doc } from 'firebase/firestore';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { confirmWrite } from '@/lib/write-feedback';
 import { format } from 'date-fns';
 import { revalidateDashboard } from '@/lib/actions';
 import { useData } from '@/context/DataContext';
@@ -58,8 +60,8 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
   const handleDelete = async () => {
     if (!user) return;
     const goalRef = doc(firestore, `users/${user.uid}/goals`, goal.id);
-    deleteDocumentNonBlocking(goalRef);
-    await revalidateDashboard();
+    if (!await confirmWrite(deleteDoc(goalRef), toast)) return;
+    await revalidateDashboard().catch(() => undefined);
     toast({ title: 'Sucesso!', description: 'Meta deletada com sucesso.' });
     setIsAlertOpen(false);
   };
@@ -97,13 +99,13 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <Progress value={progress} />
+            <Progress value={isBalanceVisible ? progress : 0} />
             <div className="flex justify-between text-sm">
               <span className="font-medium text-primary">
                 {isBalanceVisible ? formatCurrency(goal.currentAmount) : hiddenValue}
               </span>
               <span className="text-muted-foreground">
-                Progresso: {progress.toFixed(0)}%
+                Progresso: {isBalanceVisible ? `${progress.toFixed(0)}%` : hiddenValue}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -114,6 +116,7 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
                 : '••••• restantes para sua meta.'}
             </p>
           </div>
+          <GoalContribution goal={goal} />
         </CardContent>
         <CardFooter className="flex justify-start items-center text-xs text-muted-foreground gap-2">
             {goal.targetDate ? <CalendarIcon className="w-4 h-4" /> : <Target className="w-4 h-4" />}

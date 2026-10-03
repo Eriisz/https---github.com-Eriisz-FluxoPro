@@ -33,8 +33,8 @@ import { formatCurrency } from '@/lib/utils';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '../ui/badge';
-import { doc } from 'firebase/firestore';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { deleteUnusedReference } from '@/lib/reference-writes';
+import { confirmWrite } from '@/lib/write-feedback';
 import { useData } from '@/context/DataContext';
 import { revalidateDashboard } from '@/lib/actions';
 
@@ -89,9 +89,8 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
 
   const handleConfirmDelete = async () => {
     if (user && accountToDelete) {
-      const accountRef = doc(firestore, `users/${user.uid}/accounts`, accountToDelete.id);
-      deleteDocumentNonBlocking(accountRef);
-      await revalidateDashboard();
+      if (!await confirmWrite(deleteUnusedReference(firestore, user.uid, 'accounts', accountToDelete.id), toast)) return;
+      await revalidateDashboard().catch(() => undefined);
       toast({
         title: 'Sucesso!',
         description: 'Conta deletada com sucesso.',

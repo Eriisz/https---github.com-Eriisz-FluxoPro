@@ -18,8 +18,8 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { User as UserProfile } from '@/lib/definitions';
-import { doc } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, setDoc } from 'firebase/firestore';
+import { confirmWrite } from '@/lib/write-feedback';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nome deve ter ao menos 2 caracteres.' }),
@@ -55,7 +55,7 @@ export function ProfileForm({ userProfile }: ProfileFormProps) {
         return;
     }
     const userRef = doc(firestore, `users/${user.uid}`);
-    setDocumentNonBlocking(userRef, { name: data.name }, { merge: true });
+    if (!await confirmWrite(setDoc(userRef, { name: data.name, userId: user.uid }, { merge: true }), toast)) return;
     toast({ title: 'Sucesso!', description: 'Perfil atualizado com sucesso.' });
   }
 

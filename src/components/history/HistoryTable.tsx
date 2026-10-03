@@ -32,8 +32,8 @@ import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react
 import type { Transaction } from '@/lib/definitions';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { doc, writeBatch, query, where, collection, getDocs } from 'firebase/firestore';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { deleteTransactions } from '@/lib/transaction-writes';
+import { confirmWrite } from '@/lib/write-feedback';
 import { Badge } from '../ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { isPast, startOfToday } from 'date-fns';
@@ -66,35 +66,10 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
   const handleConfirmDelete = async () => {
     if (!user || !transactionToDelete) return;
 
-    if (transactionToDelete.groupId && deleteScope === 'all') {
-      const batch = writeBatch(firestore);
-      const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
-      const q = query(transactionsCol, where('groupId', '==', transactionToDelete.groupId));
-      const querySnapshot = await getDocs(q);
-      querySnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-      batch.commit().catch(e => {
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao deletar',
-          description: 'Não foi possível deletar as transações do grupo.',
-        });
-      });
-      toast({
-        title: 'Sucesso!',
-        description: 'As transações do grupo foram marcadas para exclusão.',
-      });
-    } else {
-      const transactionRef = doc(firestore, `users/${user.uid}/transactions`, transactionToDelete.id);
-      deleteDocumentNonBlocking(transactionRef);
-      toast({
-        title: 'Sucesso!',
-        description: 'Transação deletada com sucesso.',
-      });
-    }
+    if (!await confirmWrite(deleteTransactions(firestore, user.uid, transactionToDelete, deleteScope === 'all'), toast)) return;
+    toast({ title: 'Sucesso!', description: 'Exclusão confirmada.' });
 
-    await revalidateDashboard();
+    await revalidateDashboard().catch(() => undefined);
     setIsAlertOpen(false);
     setTransactionToDelete(null);
   };

@@ -1,15 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import ts from 'typescript';
-
-const source = await readFile(new URL('../src/lib/goals.ts', import.meta.url), 'utf8');
-const { outputText } = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-});
-const exports = {};
-new Function('require', 'exports', outputText)(createRequire(import.meta.url), exports);
-const { goalFormSchema, getGoalFields, getGoalFormDefaults, sortGoalsByTargetDate, getGoalProgress } = exports;
+import { loadTs } from './load-ts.mjs';
+const { goalFormSchema, getGoalFields, getGoalFormDefaults, sortGoalsByTargetDate, getGoalProgress } = loadTs(new URL('../src/lib/goals.ts', import.meta.url));
 
 const input = { name: 'Moto', targetAmount: '23000', currentAmount: '0', untilCompleted: true };
 const withoutDeadline = goalFormSchema.parse(input);

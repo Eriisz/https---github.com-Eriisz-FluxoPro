@@ -19,8 +19,9 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { Category } from '@/lib/definitions';
-import { doc, collection } from 'firebase/firestore';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc, collection, setDoc } from 'firebase/firestore';
+import { confirmWrite } from '@/lib/write-feedback';
+import { assertReferenceUnused } from '@/lib/reference-writes';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { revalidateDashboard } from '@/lib/actions';
 
@@ -69,8 +70,14 @@ export function CategoryForm({ existingCategory, onFormSubmit }: CategoryFormPro
         type: data.type,
     };
 
-    setDocumentNonBlocking(categoryRef, categoryData, { merge: true });
-    await revalidateDashboard();
+    const save = async () => {
+      if (isEditing && data.type !== existingCategory?.type) {
+        await assertReferenceUnused(firestore, user.uid, 'categories', id);
+      }
+      await setDoc(categoryRef, categoryData, { merge: true });
+    };
+    if (!await confirmWrite(save(), toast)) return;
+    await revalidateDashboard().catch(() => undefined);
 
     toast({
         title: 'Sucesso!',

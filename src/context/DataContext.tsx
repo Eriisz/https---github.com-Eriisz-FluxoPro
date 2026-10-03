@@ -160,16 +160,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
 
   useEffect(() => {
-    const storedVisibility = localStorage.getItem('isBalanceVisible');
-    if (storedVisibility !== null) {
-      setIsBalanceVisible(JSON.parse(storedVisibility));
-    }
+    try {
+      const storedVisibility = localStorage.getItem('isBalanceVisible');
+      if (storedVisibility !== null) setIsBalanceVisible(storedVisibility !== 'false');
+    } catch { /* Storage can be unavailable in private or restricted browsers. */ }
   }, []);
 
   const toggleBalanceVisibility = useCallback(() => {
     setIsBalanceVisible(prev => {
         const newState = !prev;
-        localStorage.setItem('isBalanceVisible', JSON.stringify(newState));
+        try { localStorage.setItem('isBalanceVisible', String(newState)); } catch { /* Keep the in-memory preference. */ }
         return newState;
     });
   }, []);

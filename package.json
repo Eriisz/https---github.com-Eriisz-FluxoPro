@@ -10,7 +10,9 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "verify:expenses": "node scripts/verify-expenses.mjs"
+    "verify:expenses": "node scripts/verify-expenses.mjs",
+    "verify:goals": "node scripts/verify-goals.mjs",
+    "verify:integrity": "node scripts/verify-integrity.mjs"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",
