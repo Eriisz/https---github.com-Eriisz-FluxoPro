@@ -71,12 +71,14 @@ export function isOpenExpenseStatus(status: Transaction['status'] | string): boo
 }
 
 export function belongsToMonth(isoDate: string, monthDate: Date): boolean {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate.slice(0, 7) === `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) return false;
   return date.getFullYear() === monthDate.getFullYear() && date.getMonth() === monthDate.getMonth();
 }
 
 export function belongsToYear(isoDate: string, yearDate: Date): boolean {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return Number(isoDate.slice(0, 4)) === yearDate.getFullYear();
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) return false;
   return date.getFullYear() === yearDate.getFullYear();
@@ -122,6 +124,10 @@ const PAGE_INDEX: Array<{ title: string; subtitle: string; href: string; keyword
   { title: 'Orçamentos', subtitle: 'Limites mensais', href: '/budgets', keywords: ['orcamento', 'budget', 'limite'] },
   { title: 'Metas', subtitle: 'Objetivos financeiros', href: '/goals', keywords: ['metas', 'objetivos'] },
   { title: 'Calculadoras', subtitle: 'Juros, empréstimo e inflação', href: '/calculators', keywords: ['calculadora', 'juros', 'inflacao'] },
+  { title: 'Faturas', subtitle: 'Fechamento, vencimento e pagamento', href: '/cards', keywords: ['faturas', 'cartao', 'pagamento'] },
+  { title: 'Lembretes', subtitle: 'Vencimentos e limites', href: '/reminders', keywords: ['lembretes', 'avisos', 'vencimento'] },
+  { title: 'Planos', subtitle: 'Simular Free, Premium e Vitalício', href: '/plans', keywords: ['planos', 'premium', 'vitalicio'] },
+  { title: 'Importação bancária', subtitle: 'Conciliação de extratos CSV', href: '/connections', keywords: ['banco', 'importacao', 'csv'] },
   { title: 'Ajustes', subtitle: 'Perfil, tema e importação', href: '/settings', keywords: ['ajustes', 'configuracoes', 'perfil'] },
 ];
 

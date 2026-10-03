@@ -41,3 +41,13 @@ npm run verify:expenses
 npm run verify:goals
 npm run verify:integrity
 ```
+
+## Planos, faturas e planejamento
+
+Acesse **Planos** para simular Free, Premium e Vitalício, ou `/demo` para explorar
+com dados fictícios. Não há cobrança nesta simulação. A divisão dos recursos,
+o funcionamento das faturas e os requisitos para comercializar os planos estão
+em [Planos e recursos financeiros](docs/plans-and-financial-features.md).
+
+Execute `npm run verify:product` para verificar ciclos de fatura, parcelas,
+previsão diária, limites por categoria, lembretes e a divisão dos planos.

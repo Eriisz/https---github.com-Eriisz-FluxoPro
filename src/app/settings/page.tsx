@@ -10,6 +10,7 @@ import { useFirestore } from '@/firebase';
 import type { User as UserProfile } from '@/lib/definitions';
 import { Loader } from 'lucide-react';
 import { ThemeSwitcher } from '@/components/settings/ThemeSwitcher';
+import { PremiumGate } from '@/components/plans/PlanSimulation';
 import { CsvReconciliation } from '@/components/settings/CsvReconciliation';
 
 export default function SettingsPage() {
@@ -60,7 +61,7 @@ export default function SettingsPage() {
         </Card>
 
         <ImportExport />
-        <CsvReconciliation />
+        <PremiumGate feature="csvImport"><CsvReconciliation /></PremiumGate>
       </div>
       <footer className="text-center text-sm text-muted-foreground mt-8">
         © 2024 FluxoPro. Todos os direitos reservados para Eris dos Reis.

@@ -69,13 +69,20 @@ await Promise.resolve(); assert.equal(confirmed,false); complete(); await pendin
 assert.equal(await confirmWrite(Promise.reject(new Error('offline')),v=>notifications.push(v)),false);
 assert.equal(notifications.length,1);
 
-// SDK boundary tests: stage operations until commit; inject rejection and verify no premature deletion.
+// SDK boundary tests: stage transaction writes until commit; reject without losing originals.
 const stored=new Map(rows.map(row=>[row.id,row])); let rejectCommit=true; let commits=0; let deletes=0;
 const sdk={
   collection:(_db,path)=>({path}),doc:(parent,id)=>({id,path:`${parent.path}/${id}`}),where:()=>null,query:ref=>ref,
-  getDocs:async()=>({size:stored.size,docs:[...stored.keys()].map(id=>({ref:{id}})),forEach:fn=>[...stored.keys()].forEach(id=>fn({ref:{id}}))}),
-  deleteDoc:async ref=>{deletes++; stored.delete(ref.id);},
-  writeBatch:()=>{const staged=[];return {delete:ref=>staged.push(()=>stored.delete(ref.id)),set:(ref,data)=>staged.push(()=>stored.set(ref.id,data)),commit:async()=>{commits++;if(rejectCommit)throw new Error('offline');staged.forEach(fn=>fn());}};},
+  getDocs:async()=>({size:stored.size,docs:[...stored.keys()].map(id=>({ref:{id}}))}),
+  runTransaction:async(_db,callback)=>{
+    const staged=[];
+    await callback({
+      get:async ref=>({ref,exists:()=>stored.has(ref.id),data:()=>stored.get(ref.id)}),
+      delete:ref=>staged.push(()=>{deletes++;stored.delete(ref.id);}),
+      set:(ref,data)=>staged.push(()=>stored.set(ref.id,data)),
+    });
+    commits++; if(rejectCommit) throw new Error('offline'); staged.forEach(fn=>fn());
+  },
 };
 const {replaceTransactions,deleteTransactions}=load('transaction-writes',{'firebase/firestore':sdk});
 const replacements=[{...rows[0],id:'replacement'}];

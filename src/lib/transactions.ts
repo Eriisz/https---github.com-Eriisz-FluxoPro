@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isMoney, parseMoney, splitInstallments } from './money';
-import { addMonths, isPast, startOfToday } from 'date-fns';
+import { addMonths } from 'date-fns';
+import { dayKey } from './cards';
 import type { Transaction } from './definitions';
 
 export const transactionFormSchema = z.object({
@@ -46,7 +47,7 @@ export function buildTransactions(data: TransactionFormValues, userId: string, n
 }
 
 export function editableStatus(transaction: Transaction): Transaction['status'] {
-  return transaction.status === 'PENDING' && isPast(new Date(transaction.date)) && new Date(transaction.date) < startOfToday() ? 'LATE' : transaction.status;
+  return transaction.status === 'PENDING' && dayKey(transaction.invoiceDueDate || transaction.date) < dayKey(new Date()) ? 'LATE' : transaction.status;
 }
 
 /** Preserve individual amounts and settlement states when editing other group fields. */

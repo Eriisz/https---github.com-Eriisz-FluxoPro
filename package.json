@@ -13,7 +13,8 @@
     "verify:expenses": "node scripts/verify-expenses.mjs",
     "verify:goals": "node scripts/verify-goals.mjs",
     "verify:integrity": "node scripts/verify-integrity.mjs",
-    "verify:firebase": "firebase emulators:exec --only auth,firestore --project demo-fluxopro-tests --config firebase.test.json \"node scripts/verify-firebase.mjs\""
+    "verify:firebase": "firebase emulators:exec --only auth,firestore --project demo-fluxopro-tests --config firebase.test.json \"node scripts/verify-firebase.mjs\"",
+    "verify:product": "node scripts/verify-product.mjs"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.20.0",

@@ -1,109 +1,44 @@
-import type { Account, Transaction } from '@/lib/definitions';
+import type { Account, Transaction } from './definitions';
+import { dayKey, transactionCycle } from './cards';
 
-export interface CashFlowForecastPoint {
-  label: string;
-  date: string;
-  balance: number;
-  inflows: number;
-  outflows: number;
-}
-
+export interface CashFlowForecastPoint { label: string; date: string; balance: number; inflows: number; outflows: number; }
 export interface CashFlowForecast {
-  startingBalance: number;
-  endingBalance: number;
-  lowestBalance: number;
-  totalInflows: number;
-  totalOutflows: number;
-  points: CashFlowForecastPoint[];
+  startingBalance: number; endingBalance: number; lowestBalance: number; lowestDate: string;
+  totalInflows: number; totalOutflows: number; points: CashFlowForecastPoint[];
 }
 
-const settledStatuses = new Set(['PAID', 'RECEIVED']);
-const pendingStatuses = new Set(['PENDING', 'LATE']);
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function localDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-export function buildCashFlowForecast(
-  accounts: Pick<Account, 'initialBalance'>[],
-  transactions: Transaction[],
-  referenceDate = new Date(),
-  horizonDays = 90,
-): CashFlowForecast {
-  const today = localDay(referenceDate);
-  const endDate = new Date(today.getTime() + horizonDays * DAY_MS);
-  const weekCount = Math.ceil(horizonDays / 7);
-
-  const startingBalance = accounts.reduce(
-    (total, account) => total + (Number.isFinite(account.initialBalance) ? account.initialBalance : 0),
-    0,
-  ) + transactions.reduce((total, transaction) => {
-    const transactionDate = new Date(transaction.date);
-    if (
-      settledStatuses.has(transaction.status) &&
-      !Number.isNaN(transactionDate.getTime()) &&
-      localDay(transactionDate) <= today
-    ) {
-      return total + transaction.value;
-    }
-    return total;
-  }, 0);
-
-  const weeklyFlows = Array.from({ length: weekCount }, () => ({ inflows: 0, outflows: 0 }));
-
-  transactions.forEach((transaction) => {
-    if (!pendingStatuses.has(transaction.status)) return;
-    const transactionDate = new Date(transaction.date);
-    if (Number.isNaN(transactionDate.getTime())) return;
-
-    const dueDay = localDay(transactionDate);
-    if (dueDay > endDate) return;
-    const daysFromToday = Math.floor((dueDay.getTime() - today.getTime()) / DAY_MS);
-    const weekIndex = Math.min(
-      weekCount - 1,
-      Math.max(0, Math.floor(Math.max(0, daysFromToday) / 7)),
-    );
-    const amount = Number.isFinite(transaction.value) ? transaction.value : 0;
-    if (amount >= 0) weeklyFlows[weekIndex].inflows += amount;
-    else weeklyFlows[weekIndex].outflows += Math.abs(amount);
-  });
-
-  let balance = startingBalance;
-  let totalInflows = 0;
-  let totalOutflows = 0;
-  const points: CashFlowForecastPoint[] = [{
-    label: 'Hoje',
-    date: today.toISOString(),
-    balance,
-    inflows: 0,
-    outflows: 0,
-  }];
-
-  weeklyFlows.forEach((flow, index) => {
-    balance += flow.inflows - flow.outflows;
-    totalInflows += flow.inflows;
-    totalOutflows += flow.outflows;
-    const daysAhead = Math.min((index + 1) * 7, horizonDays);
-    const date = new Date(today.getTime() + daysAhead * DAY_MS);
-
-    points.push({
-      label: daysAhead === horizonDays
-        ? `${horizonDays} dias`
-        : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
-      date: date.toISOString(),
-      balance,
-      inflows: flow.inflows,
-      outflows: flow.outflows,
-    });
-  });
-
-  return {
-    startingBalance,
-    endingBalance: balance,
-    lowestBalance: Math.min(startingBalance, ...points.map((point) => point.balance)),
-    totalInflows,
-    totalOutflows,
-    points,
-  };
+export function buildCashFlowForecast(accounts: Account[], transactions: Transaction[], referenceDate = new Date(), horizonDays = 90): CashFlowForecast {
+  if (!Number.isInteger(horizonDays) || horizonDays < 1 || horizonDays > 366) throw new Error('Horizonte deve ter entre 1 e 366 dias.');
+  const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate(), 12);
+  const end = new Date(today); end.setDate(end.getDate() + horizonDays);
+  const accountMap = new Map(accounts.map(account => [account.id, account]));
+  let initial = accounts.filter(account => account.type !== 'CartaoCredito').reduce((sum, account) => sum + Math.round(account.initialBalance * 100), 0);
+  const flows = new Map<string, { incoming: number; outgoing: number }>();
+  for (const row of transactions) {
+    const account = accountMap.get(row.accountId);
+    if (!account) continue;
+    const settled = ['PAID', 'RECEIVED'].includes(row.status);
+    if (settled && account.type === 'CartaoCredito' && !row.paidFromAccountId) continue; // Legacy payments have no known cash account.
+    let date = row.paidAt || row.date;
+    if (!settled && account.type === 'CartaoCredito') date = transactionCycle(row, account, transactions)?.invoiceDueDate || row.date;
+    if (!Number.isFinite(new Date(date).getTime()) || !Number.isFinite(row.value)) continue;
+    const cents = Math.round(row.value * 100);
+    if (settled && dayKey(date) <= dayKey(today)) { initial += cents; continue; }
+    if (dayKey(date) > dayKey(end)) continue;
+    const key = dayKey(date) < dayKey(today) ? dayKey(today) : dayKey(date);
+    const flow = flows.get(key) || { incoming: 0, outgoing: 0 };
+    if (cents >= 0) flow.incoming += cents; else flow.outgoing -= cents;
+    flows.set(key, flow);
+  }
+  let balance = initial, incoming = 0, outgoing = 0, lowest = initial;
+  let lowestDate = today.toISOString();
+  const points: CashFlowForecastPoint[] = [];
+  for (let offset = 0; offset <= horizonDays; offset++) {
+    const date = new Date(today); date.setDate(today.getDate() + offset);
+    const flow = flows.get(dayKey(date)) || { incoming: 0, outgoing: 0 };
+    balance += flow.incoming - flow.outgoing; incoming += flow.incoming; outgoing += flow.outgoing;
+    if (balance < lowest) { lowest = balance; lowestDate = date.toISOString(); }
+    points.push({ label: offset === 0 ? 'Hoje' : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), date: date.toISOString(), balance: balance / 100, inflows: flow.incoming / 100, outflows: flow.outgoing / 100 });
+  }
+  return { startingBalance: initial / 100, endingBalance: balance / 100, lowestBalance: lowest / 100, lowestDate, totalInflows: incoming / 100, totalOutflows: outgoing / 100, points };
 }

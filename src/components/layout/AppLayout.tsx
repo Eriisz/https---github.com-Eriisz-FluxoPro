@@ -15,6 +15,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import {
+  CreditCard, Bell, Crown, Import,
   DollarSign,
   Landmark,
   LayoutDashboard,
@@ -40,6 +41,7 @@ import type { User as UserProfile } from '@/lib/definitions';
 import { doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useData } from '@/context/DataContext';
+import { PlanBadge } from '@/components/plans/PlanSimulation';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 
 
@@ -47,6 +49,10 @@ const navItems = [
   { href: '/', label: 'Painel', icon: LayoutDashboard },
   { href: '/history', label: 'Histórico', icon: Wallet },
   { href: '/accounts', label: 'Contas', icon: Landmark },
+  { href: '/cards', label: 'Faturas', icon: CreditCard },
+  { href: '/reminders', label: 'Lembretes', icon: Bell },
+  { href: '/connections', label: 'Importação bancária', icon: Import },
+  { href: '/plans', label: 'Planos', icon: Crown },
   { href: '/categories', label: 'Categorias', icon: Tags },
   { href: '/budgets', label: 'Orçamentos', icon: FileBarChart },
   { href: '/goals', label: 'Metas', icon: Target },
@@ -166,6 +172,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
+        <PlanBadge />
         <SidebarMenu>
              <SidebarMenuItem>
                 <Link href="/settings">
@@ -201,11 +208,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex min-h-screen w-full min-w-0 bg-background">
         <div className="hidden md:block">
           <Sidebar>{sidebarContent}</Sidebar>
         </div>
-        <div className="flex flex-col flex-1">
+        <div className="flex min-w-0 flex-col flex-1">
           <header className="sticky top-0 z-10 flex items-center h-16 px-4 border-b bg-background/80 backdrop-blur-sm md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -227,7 +234,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </Button>
             </div>
           </header>
-          <SidebarInset>
+          <SidebarInset className="min-w-0">
             <div className="hidden md:flex items-center justify-end gap-3 px-8 pt-6">
               <Button
                 variant="outline"
@@ -241,7 +248,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <kbd className="rounded border border-primary/20 px-1.5 py-0.5 text-[10px]">Ctrl K</kbd>
               </Button>
             </div>
-            <main className="flex flex-col flex-1 p-4 md:p-8">
+            <main className="flex min-w-0 flex-col flex-1 p-4 md:p-8">
               <div className="w-full max-w-7xl mx-auto">
                 {children}
               </div>

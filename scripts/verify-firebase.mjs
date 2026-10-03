@@ -34,7 +34,10 @@ firestore.setLogLevel('silent'); // Expected permission denials are asserted bel
 const cache = new Map();
 const load = name => loadTs(new URL(`../src/lib/${name}.ts`, import.meta.url), {}, cache);
 const { buildTransactions, transactionFormSchema, transactionChanges } = load('transactions');
-const { replaceTransactions, deleteTransactions } = load('transaction-writes');
+const { prepareCardTransaction, invoiceKey, accountBalance, buildCardInvoices } = load('cards');
+const { settleInvoice, reopenInvoice } = load('invoice-writes');
+const { saveBudget } = load('budget-writes');
+const { replaceTransactions, deleteTransactions, updateTransactions } = load('transaction-writes');
 const { contributeToGoal } = load('goal-writes');
 const { assertReferenceUnused, deleteUnusedReference } = load('reference-writes');
 const { BACKUP_COLLECTIONS, parseBackup, backupRestorePlan } = load('backup');
@@ -255,6 +258,82 @@ try {
   await deleteTransactions(owner.db, uid, income, false);
   assert.equal((await firestore.getDocs(collection('transactions'))).size, 0);
   pass('Exclusão do grupo e da receita confirmada no banco');
+
+  const card = { id: 'card', userId: uid, name: 'Cartão Teste', type: 'CartaoCredito', initialBalance: 0, limit: 2000, closingDay: 20, dueDay: 5 };
+  await firestore.setDoc(ref('accounts', 'card'), card);
+  const bank = (await firestore.getDoc(ref('accounts', 'bank'))).data();
+  const cardInput = transactionFormSchema.parse({ ...input, accountId: 'card', date: new Date('2026-09-10T12:00:00Z'), frequency: 'single', value: '100,00' });
+  const purchase = prepareCardTransaction(buildTransactions(cardInput, uid, nextId)[0], card);
+  await replaceTransactions(owner.db, uid, [purchase]);
+  const invoiceId = invoiceKey(card.id, purchase);
+  const paymentDate = new Date('2026-10-03T12:00:00Z');
+  await assert.rejects(settleInvoice(owner.db, uid, card.id, invoiceId, bank.id, paymentDate, 200), /valor da fatura mudou/);
+  assert.equal((await firestore.getDoc(ref('transactions', purchase.id))).data().status, 'PENDING');
+  const payments = await Promise.allSettled([
+    settleInvoice(owner.db, uid, card.id, invoiceId, bank.id, paymentDate),
+    settleInvoice(second.db, uid, card.id, invoiceId, bank.id, paymentDate),
+  ]);
+  assert.equal(payments.filter(result => result.status === 'fulfilled').length, 1);
+  assert.match(payments.find(result => result.status === 'rejected').reason.message, /já foi paga/);
+  let settled = (await firestore.getDoc(ref('transactions', purchase.id))).data();
+  assert.equal(settled.status, 'PAID');
+  assert.equal(settled.paidFromAccountId, bank.id);
+  assert.equal(accountBalance(bank, [settled], paymentDate), -100);
+  assert.equal((await firestore.getDocs(collection('transactions'))).size, 1);
+  pass('Pagamento concorrente de fatura debita uma vez e não cria despesa duplicada');
+
+  await assert.rejects(deleteTransactions(owner.db, uid, settled, false), /Desfaça o pagamento/);
+  await assert.rejects(updateTransactions(owner.db, uid, settled, { ...cardInput, description: 'Mudança indevida' }, [card, bank]), /Desfaça o pagamento/);
+  await assert.rejects(deleteUnusedReference(owner.db, uid, 'accounts', bank.id), /vinculado/);
+  await assert.rejects(settleInvoice(other.db, uid, card.id, invoiceId, bank.id, paymentDate), denied);
+  const cardBackup = parseBackup(await exportData());
+  assert.equal(cardBackup.transactions[0].paidFromAccountId, bank.id);
+  await assert.rejects(settleInvoice(owner.db, uid, card.id, invoiceId, card.id, paymentDate), /conta de origem/);
+  pass('Pagamento vinculado protegido contra edição, exclusão, conta inválida e outro usuário');
+
+  await reopenInvoice(owner.db, uid, card.id, invoiceId);
+  settled = (await firestore.getDoc(ref('transactions', purchase.id))).data();
+  assert.equal(settled.status, 'PENDING');
+  assert.equal(settled.paidFromAccountId, undefined);
+  assert.equal(accountBalance(bank, [settled], paymentDate), 0);
+  await assert.rejects(reopenInvoice(owner.db, uid, card.id, invoiceId), /Não há pagamento/);
+  await assert.rejects(settleInvoice(owner.db, uid, card.id, invoiceId, bank.id, new Date('2026-09-20T12:00:00Z')), /Aguarde o fechamento/);
+  await settleInvoice(owner.db, uid, card.id, invoiceId, bank.id, paymentDate);
+  assert.equal(buildCardInvoices([card], [(await firestore.getDoc(ref('transactions', purchase.id))).data()], paymentDate)[0].remaining, 0);
+  pass('Reversão retorna saldo, fechamento é respeitado e novo pagamento funciona');
+
+  const categoryBudget = { month: '2026-10', limit: 250, categoryId: 'purchase' };
+  const budgetRace = await Promise.allSettled([
+    saveBudget(owner.db, uid, categoryBudget), saveBudget(second.db, uid, categoryBudget),
+  ]);
+  assert.equal(budgetRace.filter(result => result.status === 'fulfilled').length, 1);
+  const categoryBudgetRows = (await firestore.getDocs(collection('budgets'))).docs.filter(row => row.data().categoryId === 'purchase');
+  assert.equal(categoryBudgetRows.length, 1);
+  const categoryBudgetId = categoryBudgetRows[0].id;
+  await saveBudget(owner.db, uid, { ...categoryBudget, limit: 300 }, categoryBudgetId);
+  assert.equal((await firestore.getDoc(ref('budgets', categoryBudgetId))).data().limit, 300);
+  await assert.rejects(saveBudget(owner.db, uid, { ...categoryBudget, categoryId: 'salary' }), /categoria de despesa/);
+  await firestore.setDoc(ref('categories', 'budget-only'), { id: 'budget-only', userId: uid, name: 'Só orçamento', type: 'expense', color: '#112233' });
+  await saveBudget(owner.db, uid, { month: '2026-10', limit: 10, categoryId: 'budget-only' });
+  await assert.rejects(deleteUnusedReference(owner.db, uid, 'categories', 'budget-only'), /vinculado/);
+  const longCategoryId = 'x'.repeat(128);
+  await firestore.setDoc(ref('categories', longCategoryId), { id: longCategoryId, userId: uid, name: 'Categoria importada', type: 'expense', color: '#112233' });
+  await saveBudget(owner.db, uid, { month: '2026-10', limit: 10, categoryId: longCategoryId });
+  assert.ok((await firestore.getDocs(collection('budgets'))).docs.every(row => row.id.length <= 128));
+  pass('Orçamento por categoria grava, evita duplicação concorrente e protege referências');
+
+  const extendedBackup = parseBackup(await exportData());
+  await firestore.updateDoc(ref('transactions', purchase.id), { paidFromAccountId: firestore.deleteField(), paidAt: firestore.deleteField(), status: 'PENDING' });
+  await firestore.deleteDoc(ref('budgets', categoryBudgetId));
+  const extendedRestore = firestore.writeBatch(owner.db);
+  for (const item of backupRestorePlan(await exportData(), extendedBackup)) {
+    if (item.data) extendedRestore.set(ref(item.collection, item.id), { ...item.data, userId: uid });
+    else extendedRestore.delete(ref(item.collection, item.id));
+  }
+  await extendedRestore.commit();
+  assert.deepEqual(canonical(await exportData()), canonical(extendedBackup));
+  pass('Backup restaura ciclos, pagamentos de fatura e limites por categoria');
+
 } catch (error) {
   testError = error;
   throw error;

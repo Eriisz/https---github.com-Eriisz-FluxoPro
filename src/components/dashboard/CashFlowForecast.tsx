@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { usePlan } from '@/context/PlanContext';
 import { useMemo } from 'react';
 import {
   Area,
@@ -57,9 +59,11 @@ export function CashFlowForecast({
   transactions: Transaction[];
 }) {
   const { isBalanceVisible } = useData();
+  const { allows } = usePlan();
+  const horizon = allows('forecast90') ? 90 : 7;
   const forecast = useMemo(
-    () => buildCashFlowForecast(accounts, transactions),
-    [accounts, transactions],
+    () => buildCashFlowForecast(accounts, transactions, new Date(), horizon),
+    [accounts, transactions, horizon],
   );
   const endTone = forecast.endingBalance >= 0 ? 'positive' : 'negative';
   const lowTone = forecast.lowestBalance >= 0 ? 'neutral' : 'negative';
@@ -69,20 +73,20 @@ export function CashFlowForecast({
       <CardHeader>
         <CardTitle>Previsão de fluxo de caixa</CardTitle>
         <CardDescription>
-          Projeção para os próximos 90 dias usando saldos iniciais, movimentações confirmadas e transações pendentes.
+          Projeção diária para os próximos {horizon} dias usando saldos, movimentações e vencimentos das faturas.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <Metric
-            label="Saldo projetado em 90 dias"
+            label={`Saldo projetado em ${horizon} dias`}
             value={forecast.endingBalance}
             icon={forecast.endingBalance >= forecast.startingBalance ? TrendingUp : TrendingDown}
             tone={endTone}
             visible={isBalanceVisible}
           />
           <Metric
-            label="Menor saldo projetado"
+            label={`Menor saldo · ${new Date(forecast.lowestDate).toLocaleDateString("pt-BR")}`}
             value={forecast.lowestBalance}
             icon={TrendingDown}
             tone={lowTone}
@@ -103,8 +107,9 @@ export function CashFlowForecast({
           </div>
         </div>
 
+        {horizon === 7 && <p className="text-sm"><Link href="/plans" className="underline">Simule Premium ou Vitalício para projetar 90 dias.</Link></p>}
         {forecast.points.length > 0 ? (
-          <div className="h-[260px] w-full" role="img" aria-label="Gráfico do saldo de caixa projetado para os próximos 90 dias">
+          <div className="h-[260px] w-full" role="img" aria-label={`Gráfico diário do saldo de caixa para os próximos ${horizon} dias`}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={forecast.points} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
                 <defs>
@@ -129,7 +134,7 @@ export function CashFlowForecast({
                   labelFormatter={(label) => `Data: ${label}`}
                 />
                 <Area
-                  type="monotone"
+                  type="stepAfter"
                   dataKey="balance"
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
@@ -145,7 +150,7 @@ export function CashFlowForecast({
           </p>
         )}
         <p className="text-xs text-muted-foreground">
-          Esta estimativa considera apenas transações futuras cadastradas. Ela não cria receitas ou despesas automaticamente.
+          A estimativa usa lançamentos cadastrados, agrupa por dia e traz atrasos para hoje. Pagamentos antigos de cartão sem conta de origem vinculada não alteram o saldo de caixa.
         </p>
       </CardContent>
     </Card>

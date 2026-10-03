@@ -32,7 +32,7 @@ export default function BudgetsPage() {
     );
   }
 
-  const sortedBudgets = (budgets || []).sort((a,b) => b.month.localeCompare(a.month));
+  const sortedBudgets = [...(budgets || [])].sort((a,b) => b.month.localeCompare(a.month));
 
   return (
     <div className="flex flex-col gap-8">

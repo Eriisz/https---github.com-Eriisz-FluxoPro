@@ -13,6 +13,11 @@ export type Transaction = {
   };
   type: 'income' | 'expense';
   status: 'PAID' | 'PENDING' | 'RECEIVED' | 'LATE';
+  invoiceMonth?: string;
+  invoiceClosingDate?: string;
+  invoiceDueDate?: string;
+  paidFromAccountId?: string;
+  paidAt?: string;
 };
 
 export type Account = {
@@ -22,6 +27,8 @@ export type Account = {
   type: 'ContaCorrente' | 'CartaoCredito' | 'Investimento' | 'Outro';
   initialBalance: number;
   limit?: number | null;
+  closingDay?: number | null;
+  dueDay?: number | null;
 };
 
 export type Category = {
@@ -37,6 +44,7 @@ export type Budget = {
   userId: string;
   limit: number;
   month: string; // YYYY-MM
+  categoryId?: string | null;
 };
 
 export type Goal = {

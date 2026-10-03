@@ -28,7 +28,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import type { Account, Transaction } from '@/lib/definitions';
+import type { Account } from '@/lib/definitions';
+import { accountBalance } from '@/lib/cards';
 import { formatCurrency } from '@/lib/utils';
 import { useUser, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -50,7 +51,6 @@ const accountTypeLabels: { [key: string]: string } = {
     'Outro': 'Outro'
 }
 
-const paidOrReceivedStatuses = ['PAID', 'RECEIVED'];
 
 export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
   const { user } = useUser();
@@ -66,18 +66,7 @@ export function AccountsTable({ accounts, onEdit }: AccountsTableProps) {
       return balances;
     }
 
-    const transactionTotals = new Map<string, number>();
-    for (const t of allTransactions) {
-      if (paidOrReceivedStatuses.includes(t.status)) {
-        const currentTotal = transactionTotals.get(t.accountId) || 0;
-        transactionTotals.set(t.accountId, currentTotal + t.value);
-      }
-    }
-    
-    for (const account of accounts) {
-        const totalFromTransactions = transactionTotals.get(account.id) || 0;
-        balances.set(account.id, (account.initialBalance || 0) + totalFromTransactions);
-    }
+    for (const account of accounts) balances.set(account.id, accountBalance(account, allTransactions));
     return balances;
   }, [accounts, allTransactions]);
 

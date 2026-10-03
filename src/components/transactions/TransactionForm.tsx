@@ -5,7 +5,8 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { transactionFormSchema, buildTransactions, editableStatus, transactionChanges, type TransactionFormValues } from '@/lib/transactions';
-import { replaceTransactions } from '@/lib/transaction-writes';
+import { prepareCardTransaction } from '@/lib/cards';
+import { replaceTransactions, updateTransactions } from '@/lib/transaction-writes';
 import { CalendarIcon, Calculator as CalculatorIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,7 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Account, Category, Transaction } from '@/lib/definitions';
 import { CategoryDialog } from '../categories/CategoryDialog';
-import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { useData } from '@/context/DataContext';
 import { AccountDialog } from '../accounts/AccountDialog';
 import { revalidateDashboard } from '@/lib/actions';
@@ -90,6 +91,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
 
   const transactionFrequency = form.watch('frequency');
   const transactionType = form.watch('type');
+  const selectedAccountId = form.watch('accountId');
   const installmentCount = form.watch('installments');
   const originalFrequency = transaction?.groupId ? (transaction.installments ? 'installment' : 'recurring') : 'single';
   const isRestructuring = isEditing && (transactionFrequency !== originalFrequency ||
@@ -100,6 +102,8 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
   
   const allCategories = categories || initialCategories;
   const allAccounts = accounts || initialAccounts;
+  const isCard = allAccounts.some(account => account.id === selectedAccountId && account.type === 'CartaoCredito');
+  useEffect(() => { if (isCard && !isEditing) { form.setValue('status', 'PENDING'); form.setValue('type', 'expense'); } }, [isCard, isEditing, form, transactionType]);
 
   useEffect(() => {
     if (transactionType === 'income' && !isEditing) {
@@ -112,48 +116,9 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
 
   useEffect(() => {
     if (!isEditing) {
-        form.setValue('status', transactionType === 'income' ? 'RECEIVED' : 'PAID');
+        form.setValue('status', isCard ? 'PENDING' : transactionType === 'income' ? 'RECEIVED' : 'PAID');
     }
-  }, [transactionType, form, isEditing]);
-
-  async function handleUpdateTransactions(data: FormValues) {
-    if (!user || !transaction) return;
-  
-    const batch = writeBatch(firestore);
-  
-    if (data.updateScope === 'current' || !transaction.groupId) {
-      const docRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
-      batch.update(docRef, {...transactionChanges(data, transaction, transaction), date: data.date.toISOString()});
-    } else {
-      // For recurring/installment, we only update some fields, preserving original date and installment count
-
-      const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
-      const q = query(transactionsCol, where('groupId', '==', transaction.groupId));
-      const querySnapshot = await getDocs(q);
-  
-      if (querySnapshot.size > 500) throw new Error('Grupo excede o limite de uma atualização atômica.');
-      querySnapshot.forEach(docSnap => {
-        const currentTransaction = docSnap.data() as Transaction;
-        const currentDate = new Date(currentTransaction.date);
-        
-        let shouldUpdate = false;
-        if (data.updateScope === 'all') {
-          shouldUpdate = true;
-        } else if (data.updateScope === 'future') {
-          const originalDate = new Date(transaction.date);
-          shouldUpdate = currentDate.getTime() >= originalDate.getTime();
-        }
-  
-        if (shouldUpdate) {
-          const changes = transactionChanges(data, transaction, currentTransaction);
-          if (Object.keys(changes).length) batch.update(docSnap.ref, changes);
-        }
-      });
-    }
-  
-    await batch.commit();
-  }
-
+  }, [transactionType, form, isEditing, isCard]);
 
   async function onSubmit(data: FormValues) {
     if (!user) {
@@ -190,7 +155,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
 
         if (isEditing && !isFrequencyChanged && !isInstallmentCountChanged) {
             // ===== NON-DESTRUCTIVE EDIT =====
-            await handleUpdateTransactions(data);
+            await updateTransactions(firestore, user.uid, transaction!, data, allAccounts);
             toast({ title: "Sucesso!", description: "Transação(ões) atualizada(s) com sucesso!" });
         } else {
             // ===== CREATE NEW OR DESTRUCTIVE EDIT =====
@@ -199,7 +164,8 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                 throw new Error('Para mudar a frequência ou o número de parcelas, selecione todas as transações do grupo.');
             }
             const transactionsCol = collection(firestore, `users/${user.uid}/transactions`);
-            const replacements = buildTransactions(data, user.uid, () => doc(transactionsCol).id);
+            const account = allAccounts.find(item => item.id === data.accountId)!;
+            const replacements = buildTransactions(data, user.uid, () => doc(transactionsCol).id).map(row => prepareCardTransaction(row, account, data.date.toISOString()));
             await replaceTransactions(firestore, user.uid, replacements, transaction);
 
             const toastMessage = isEditing ? "Transação reestruturada com sucesso!" : `Transação ${newInstallmentCount > 1 ? newFrequency : ''} adicionada com sucesso!`;
@@ -233,6 +199,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
     <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {isCard && <p className="rounded-md bg-muted p-3 text-sm">Compras de cartão ficam pendentes até registrar o pagamento na tela de Faturas.</p>}
         {isEditing && transaction?.groupId && (
             <FormField
             control={form.control}
@@ -460,7 +427,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isCard}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o status" />
