@@ -14,6 +14,9 @@ import { SummaryReport } from '@/components/dashboard/SummaryReport';
 import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
 import { InsightsBanner } from '@/components/dashboard/InsightsBanner';
 import { CashFlowForecast } from '@/components/dashboard/CashFlowForecast';
+import { PremiumGate } from '@/components/plans/PlanSimulation';
+import { ReminderCenter } from '@/components/reminders/ReminderCenter';
+import { transactionCycle } from '@/lib/cards';
 import type { Transaction } from '@/lib/definitions';
 import {
   belongsToMonth,
@@ -90,13 +93,14 @@ export function DashboardPageContent() {
       belongsToYear(transaction.date, currentDate),
     );
 
-    const income = sumSettledIncome(selectedMonthTransactions);
-    const expenses = sumSettledExpenses(selectedMonthTransactions);
+    const settledMonth = transactions.filter(row => belongsToMonth(row.paidAt || row.date, currentDate));
+    const income = sumSettledIncome(settledMonth);
+    const expenses = sumSettledExpenses(settledMonth);
     const allExpenses = sumMonthlyExpenses(selectedMonthTransactions);
     const monthlyNet = income + expenses;
 
     const selectedMonthString = format(currentDate, 'yyyy-MM');
-    const budgetForMonth = (budgets || []).find((budget) => budget.month === selectedMonthString);
+    const budgetForMonth = (budgets || []).find((budget) => budget.month === selectedMonthString && !budget.categoryId);
     const totalBudget = budgetForMonth ? budgetForMonth.limit : 0;
     const spentThisMonth = allExpenses;
 
@@ -126,8 +130,13 @@ export function DashboardPageContent() {
       };
     }).reverse();
 
-    const pendingExpenses = sumMonthlyPendingExpenses(selectedMonthTransactions);
-    const pendingIncome = sumMonthlyPendingIncome(selectedMonthTransactions);
+    const dueThisMonth = transactions.filter(row => {
+      const card = (accounts || []).find(account => account.id === row.accountId && account.type === 'CartaoCredito');
+      const date = card ? transactionCycle(row, card, transactions)?.invoiceDueDate || row.date : row.date;
+      return belongsToMonth(date, currentDate);
+    });
+    const pendingExpenses = sumMonthlyPendingExpenses(dueThisMonth);
+    const pendingIncome = sumMonthlyPendingIncome(dueThisMonth);
 
     setDashboardData({
       monthlyNet,
@@ -199,6 +208,7 @@ export function DashboardPageContent() {
         spent={spentThisMonth}
       />
 
+      <ReminderCenter compact />
       <GoalsCarousel goals={goals || []} />
 
       <div className="dash-charts">
@@ -208,12 +218,13 @@ export function DashboardPageContent() {
 
       <CashFlowForecast accounts={accounts || []} transactions={allTransactions || []} />
 
-      <SummaryReport
+      <PremiumGate feature="reports"><SummaryReport
         monthlyData={selectedMonthTransactions}
         yearlyData={selectedYearTransactions}
         categories={categories || []}
         periodDate={currentDate}
       />
+      </PremiumGate>
       <RecentTransactions transactions={recentTransactions} isDemo={isDemo} />
     </div>
   );

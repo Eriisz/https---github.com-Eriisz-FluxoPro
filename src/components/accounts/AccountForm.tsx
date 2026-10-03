@@ -38,6 +38,8 @@ const formSchema = z.object({
     required_error: 'Selecione um tipo de conta.',
   }),
   initialBalance: z.string().refine(v => !v.trim() || isMoney(v, -Number.MAX_VALUE), 'Saldo inválido.').optional(),
+  closingDay: z.string().optional(),
+  dueDay: z.string().optional(),
   limit: z.string().refine(v => !v.trim() || isMoney(v), 'Limite inválido.').optional(),
 }).refine(data => {
     if (data.type !== 'CartaoCredito' && (data.initialBalance === undefined || data.initialBalance.trim() === '')) {
@@ -47,6 +49,11 @@ const formSchema = z.object({
   }, {
     message: 'Saldo inicial é obrigatório para este tipo de conta.',
     path: ['initialBalance'],
+}).superRefine((data, ctx) => {
+  if (data.type === 'CartaoCredito') for (const key of ['closingDay', 'dueDay'] as const) {
+    const value = Number(data[key]);
+    if (!Number.isInteger(value) || value < 1 || value > 31) ctx.addIssue({ code: 'custom', path: [key], message: 'Informe um dia de 1 a 31.' });
+  }
 });
 
 
@@ -70,6 +77,8 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
       type: existingAccount?.type || 'ContaCorrente',
       initialBalance: String(existingAccount?.initialBalance ?? '0.00'),
       limit: String(existingAccount?.limit || ''),
+      closingDay: String(existingAccount?.closingDay || ''),
+      dueDay: String(existingAccount?.dueDay || ''),
     },
   });
 
@@ -104,6 +113,8 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
     };
 
     accountData.limit = null;
+    accountData.closingDay = data.type === 'CartaoCredito' ? Number(data.closingDay) : null;
+    accountData.dueDay = data.type === 'CartaoCredito' ? Number(data.dueDay) : null;
     if (data.type === 'CartaoCredito') {
         accountData.limit = data.limit?.trim() ? parseMoney(data.limit)! : 0;
     }
@@ -194,6 +205,10 @@ export function AccountForm({ existingAccount, onFormSubmit }: AccountFormProps)
             )}
           />
         )}
+        {accountType === 'CartaoCredito' && <>
+          <div className="grid grid-cols-2 gap-3">{(['closingDay', 'dueDay'] as const).map(name => <FormField key={name} control={form.control} name={name} render={({ field }) => <FormItem><FormLabel>{name === 'closingDay' ? 'Dia do fechamento' : 'Dia do vencimento'}</FormLabel><FormControl><Input type="number" min={1} max={31} {...field} /></FormControl><FormMessage /></FormItem>} />)}</div>
+          <p className="text-xs text-muted-foreground">Dias inexistentes se ajustam ao fim do mês. Mudanças valem para novas compras; compras antigas sem ciclo definido usam esta configuração.</p>
+        </>}
         <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
             {form.formState.isSubmitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Criar Conta'}
         </Button>

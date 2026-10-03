@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { FirebaseClientProvider } from '@/firebase';
 import { DataProvider } from '@/context/DataContext';
 import { AppearanceProvider } from '@/context/AppearanceContext';
+import { PlanProvider } from '@/context/PlanContext';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
@@ -46,9 +47,11 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <AppearanceProvider>
             <DataProvider>
+              <PlanProvider>
               <AppLayout>
                 {children}
               </AppLayout>
+            </PlanProvider>
             </DataProvider>
           </AppearanceProvider>
           <Toaster />

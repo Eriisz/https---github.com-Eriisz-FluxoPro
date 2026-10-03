@@ -2,6 +2,10 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import { useData } from '@/context/DataContext';
+import { usePlan } from '@/context/PlanContext';
+import { saveBudget } from '@/lib/budget-writes';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,13 +26,13 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { Budget } from '@/lib/definitions';
-import { doc, collection, setDoc } from 'firebase/firestore';
 import { confirmWrite } from '@/lib/write-feedback';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calculator } from '../shared/Calculator';
 import { revalidateDashboard } from '@/lib/actions';
 
 const formSchema = z.object({
+  categoryId: z.string().default(""),
   limit: z.string().refine(v => isMoney(v, 0.01), 'Informe um limite válido maior que zero.'),
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mês deve estar no formato AAAA-MM.'),
 });
@@ -45,10 +49,13 @@ export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const isEditing = !!existingBudget;
+  const { categories } = useData();
+  const { allows } = usePlan();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      categoryId: existingBudget?.categoryId || '',
       limit: String(existingBudget?.limit || ''),
       month: existingBudget?.month || format(new Date(), 'yyyy-MM'),
     },
@@ -60,17 +67,10 @@ export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
       return;
     }
 
-    const id = existingBudget?.id || doc(collection(firestore, '_')).id;
-    const budgetRef = doc(firestore, `users/${user.uid}/budgets`, id);
-
-    const budgetData = {
-      id,
-      userId: user.uid,
-      limit: parseMoney(data.limit)!,
-      month: data.month,
-    };
-
-    if (!await confirmWrite(setDoc(budgetRef, budgetData, { merge: true }), toast)) return;
+    if (data.categoryId && !allows('categoryBudgets')) {
+      toast({ title: 'Recurso Premium', description: 'Simule Premium ou Vitalício em Planos para definir limites por categoria.' }); return;
+    }
+    if (!await confirmWrite(saveBudget(firestore, user.uid, { month: data.month, categoryId: data.categoryId || null, limit: parseMoney(data.limit)! }, existingBudget?.id), toast)) return;
     await revalidateDashboard().catch(() => undefined);
     
     toast({
@@ -92,18 +92,20 @@ export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
                 <FormItem>
                     <FormLabel>Mês</FormLabel>
                     <FormControl>
-                        <Input type="month" {...field} />
+                        <Input type="month" {...field} disabled={isEditing} />
                     </FormControl>
                     <FormMessage />
                 </FormItem>
             )}
         />
+        <FormField control={form.control} name="categoryId" render={({ field }) => <FormItem><FormLabel>Aplicar limite a</FormLabel><FormControl><select {...field} disabled={isEditing || !allows('categoryBudgets')} className="h-10 w-full rounded-md border bg-background px-3"><option value="">Todas as despesas do mês</option>{(categories || []).filter(category => category.type === 'expense').map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></FormControl><FormMessage /></FormItem>} />
+        {!allows('categoryBudgets') && <p className="text-xs text-muted-foreground"><Link href="/plans" className="underline">Simule Premium</Link> para definir um limite por categoria.</p>}
         <FormField
           control={form.control}
           name="limit"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Limite de Gasto Total (R$)</FormLabel>
+              <FormLabel>Limite de Gasto (R$)</FormLabel>
                <div className="relative">
                 <FormControl>
                     <Input type="text" placeholder="5000,00" {...field} />

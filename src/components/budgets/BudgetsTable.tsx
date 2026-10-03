@@ -2,6 +2,9 @@
 'use client';
 
 import React from 'react';
+import { useData } from '@/context/DataContext';
+import { budgetProgress } from '@/lib/budgets';
+import { Progress } from '@/components/ui/progress';
 import {
   Table,
   TableBody,
@@ -45,6 +48,8 @@ interface BudgetsTableProps {
 
 export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
   const { user } = useUser();
+  const { categories, allTransactions, isBalanceVisible } = useData();
+  const money = (value: number) => isBalanceVisible ? formatCurrency(value) : "•••••";
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
@@ -85,7 +90,7 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Mês</TableHead>
-              <TableHead className="text-right">Limite</TableHead>
+              <TableHead>Categoria</TableHead><TableHead className="text-right">Limite</TableHead><TableHead>Uso do orçamento</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -94,9 +99,11 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
               budgets.map((budget) => (
                 <TableRow key={budget.id}>
                   <TableCell className="font-medium capitalize">{formatMonth(budget.month)}</TableCell>
+                  <TableCell>{budget.categoryId ? categories?.find(category => category.id === budget.categoryId)?.name || "Categoria removida" : "Total do mês"}</TableCell>
                   <TableCell className="text-right">
-                    {formatCurrency(budget.limit)}
+                    {money(budget.limit)}
                   </TableCell>
+                  <TableCell>{(() => { const progress = budgetProgress(budget, allTransactions || []); return <div className="min-w-[140px] space-y-1"><p className="text-xs">Gasto: {money(progress.spent)}</p><Progress value={isBalanceVisible ? Math.min(100, progress.percent) : 0} aria-label="Uso do orçamento" /><p className="text-xs">{isBalanceVisible ? `${Math.round(progress.percent)}% · ${progress.remaining < 0 ? 'Excedido' : 'Restante'}: ${money(Math.abs(progress.remaining))}` : '•••••'}</p></div>; })()}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -124,7 +131,7 @@ export function BudgetsTable({ budgets, onEdit }: BudgetsTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   Nenhum orçamento encontrado.
                 </TableCell>
               </TableRow>

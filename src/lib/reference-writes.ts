@@ -8,6 +8,11 @@ export async function assertReferenceUnused(db: Firestore, userId: string, name:
   const field = name === 'accounts' ? 'accountId' : 'categoryId';
   const snapshot = await getDocs(query(collection(db, `users/${userId}/transactions`), where(field, '==', id), limit(1)));
   if (!snapshot.empty) throw new WriteValidationError('Existem transações vinculadas. Transfira ou exclua esses lançamentos antes de excluir o registro ou alterar o tipo da categoria.');
+  const extra = name === 'accounts'
+    ? await getDocs(query(collection(db, `users/${userId}/transactions`), where('paidFromAccountId', '==', id), limit(1)))
+    : await getDocs(query(collection(db, `users/${userId}/budgets`), where('categoryId', '==', id), limit(1)));
+  if (!extra.empty) throw new WriteValidationError('Registro vinculado a pagamentos de faturas ou orçamentos. Remova os vínculos antes de excluir ou alterar.');
+
 }
 
 export async function deleteUnusedReference(db: Firestore, userId: string, name: ReferenceCollection, id: string) {

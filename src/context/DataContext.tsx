@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useUser, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import type { Account, Category, Budget, Goal, Transaction } from '@/lib/definitions';
+import { prepareCardTransaction } from '@/lib/cards';
 import { Loader } from 'lucide-react';
 
 interface DataContextProps {
@@ -129,8 +130,14 @@ function buildDemoData(referenceDate: Date) {
     });
   }
 
+  const demoCard: Account = { id: 'demo-card', userId: demoUserId, name: 'Cartão principal', type: 'CartaoCredito', initialBalance: 0, limit: 5000, closingDay: 20, dueDay: 28 };
+  for (let index = 0; index < 3; index++) transactions.push(prepareCardTransaction({
+    id: `card-purchase-${index}`, userId: demoUserId, description: 'Computador parcelado', value: -300,
+    date: dateAtNoon(referenceDate.getFullYear(), referenceDate.getMonth() - 1 + index, 10),
+    categoryId: 'leisure', accountId: demoCard.id, type: 'expense', status: 'PENDING', groupId: 'demo-card-group', installments: { current: index + 1, total: 3 },
+  }, demoCard, dateAtNoon(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 10)));
   return {
-    accounts: [
+    accounts: [demoCard,
       { id: 'checking', userId: demoUserId, name: 'Conta principal', type: 'ContaCorrente' as const, initialBalance: 18500 },
       { id: 'reserve', userId: demoUserId, name: 'Reserva', type: 'Investimento' as const, initialBalance: 7200 },
     ],
@@ -140,7 +147,7 @@ function buildDemoData(referenceDate: Date) {
       userId: demoUserId,
       month: `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}`,
       limit: 6500,
-    }],
+    }, { id: 'food-budget', userId: demoUserId, month: `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}`, limit: 1000, categoryId: 'food' }],
     goals: [{
       id: 'emergency-fund',
       userId: demoUserId,

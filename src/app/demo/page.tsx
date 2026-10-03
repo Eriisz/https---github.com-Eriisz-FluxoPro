@@ -1,5 +1,7 @@
 'use client';
 
+import { PlanSimulation } from '@/components/plans/PlanSimulation';
+import { CardInvoices } from '@/components/cards/CardInvoices';
 import Link from 'next/link';
 import { ArrowRight, CircleHelp, DollarSign, ShieldCheck } from 'lucide-react';
 import { DemoDataProvider } from '@/context/DataContext';
@@ -57,7 +59,7 @@ export default function DemoPage() {
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">2</span>
               <div>
                 <p className="font-medium">Antecipe o caixa</p>
-                <a href="#cash-flow-forecast" className="text-sm text-muted-foreground underline underline-offset-4">Projeção de 90 dias</a>
+                <a href="#cash-flow-forecast" className="text-sm text-muted-foreground underline underline-offset-4">Projeção diária de saldo</a>
               </div>
             </CardContent>
           </Card>
@@ -65,13 +67,15 @@ export default function DemoPage() {
             <CardContent className="flex gap-3 p-4">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">3</span>
               <div>
-                <p className="font-medium">Compartilhe resultados</p>
-                <a href="#executive-report" className="text-sm text-muted-foreground underline underline-offset-4">Prévia do relatório PDF</a>
+                <p className="font-medium">Compare os planos</p>
+                <a href="#plan-simulation" className="text-sm text-muted-foreground underline underline-offset-4">Simulação Free, Premium e Vitalício</a>
               </div>
             </CardContent>
           </Card>
         </section>
+        <PlanSimulation />
         <DashboardPageContent />
+        <section aria-label="Exemplo de faturas"><h2 className="mb-4 text-2xl font-semibold">Faturas de demonstração</h2><CardInvoices /></section>
       </div>
     </DemoDataProvider>
   );

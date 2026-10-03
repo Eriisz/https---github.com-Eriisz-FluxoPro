@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { prepareCardTransaction } from '@/lib/cards';
+import { usePlan } from '@/context/PlanContext';
 import { Check, FileUp, Loader, Upload } from 'lucide-react';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -99,6 +101,7 @@ function ColumnSelect({
 }
 
 export function CsvReconciliation() {
+  const { allows } = usePlan();
   const { user } = useUser();
   const firestore = useFirestore();
   const { accounts, categories, allTransactions } = useData();
@@ -227,7 +230,7 @@ export function CsvReconciliation() {
   };
 
   const handleImport = async () => {
-    if (!user || !parsedFile || !accountId || selectedRows.length === 0) return;
+    if (!allows('csvImport') || !user || !parsedFile || !accountId || selectedRows.length === 0) return;
     if (parsedFile.rows.length > MAX_IMPORT_ROWS) return;
     if (mapping.date === null || mapping.description === null) {
       setErrorMessage('Selecione as colunas de data e descrição para continuar.');
@@ -244,6 +247,8 @@ export function CsvReconciliation() {
       const transactionsCollection = collection(firestore, `users/${user.uid}/transactions`);
       const batch = writeBatch(firestore);
 
+      const account = accounts?.find(item => item.id === accountId);
+      if (!account) throw new Error('Conta não encontrada.');
       selectedRows.forEach((row) => {
         const isIncome = row.value > 0;
         const transactionRef = doc(transactionsCollection);
@@ -258,7 +263,7 @@ export function CsvReconciliation() {
           type: isIncome ? 'income' : 'expense',
           status: isIncome ? 'RECEIVED' : 'PAID',
         };
-        batch.set(transactionRef, transaction);
+        batch.set(transactionRef, prepareCardTransaction(transaction, account));
       });
 
       await batch.commit();

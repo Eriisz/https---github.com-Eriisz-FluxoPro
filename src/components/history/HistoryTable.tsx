@@ -36,7 +36,7 @@ import { deleteTransactions } from '@/lib/transaction-writes';
 import { confirmWrite } from '@/lib/write-feedback';
 import { Badge } from '../ui/badge';
 import { formatCurrency } from '@/lib/utils';
-import { isPast, startOfToday } from 'date-fns';
+import { editableStatus } from '@/lib/transactions';
 import { revalidateDashboard } from '@/lib/actions';
 import { useData } from '@/context/DataContext';
 import { Label } from '@/components/ui/label';
@@ -74,13 +74,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
     setTransactionToDelete(null);
   };
 
-  const getTransactionStatus = (transaction: Transaction) => {
-    const transactionDate = new Date(transaction.date);
-    if (transaction.status === 'PENDING' && isPast(transactionDate) && transactionDate < startOfToday()) {
-        return 'LATE';
-    }
-    return transaction.status;
-  }
+  const getTransactionStatus = editableStatus;
 
   const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' => {
     switch(status) {
@@ -126,6 +120,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
                         <div className="flex items-center gap-3">
                         {transaction.type === 'income' ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-destructive" />}
                         <div className="flex flex-col">
+                            {transaction.paidFromAccountId && <a href="/cards" className="text-xs underline">Pagamento vinculado à fatura</a>}
                             <span className="font-medium">
                               {transaction.description}
                               {transaction.installments && (
@@ -173,12 +168,13 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onEdit(transaction)}>
+                            <DropdownMenuItem disabled={!!transaction.paidFromAccountId} onClick={() => onEdit(transaction)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem
                             className="text-destructive"
+                            disabled={!!transaction.paidFromAccountId}
                             onClick={() => handleDeleteClick(transaction)}
                             >
                             <Trash2 className="mr-2 h-4 w-4" />
