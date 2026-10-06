@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { transactionFormSchema, buildTransactions, editableStatus, transactionChanges, type TransactionFormValues } from '@/lib/transactions';
+import { transactionFormSchema, buildTransactions, editableStatus, preserveScopedRecurrence, type TransactionFormValues } from '@/lib/transactions';
 import { prepareCardTransaction } from '@/lib/cards';
 import { replaceTransactions, updateTransactions } from '@/lib/transaction-writes';
 import { CalendarIcon, Calculator as CalculatorIcon, PlusCircle } from 'lucide-react';
@@ -93,8 +93,10 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
   const transactionType = form.watch('type');
   const selectedAccountId = form.watch('accountId');
   const installmentCount = form.watch('installments');
+  const updateScope = form.watch('updateScope');
+  const preserveGroupStructure = !!transaction?.groupId && updateScope !== 'all';
   const originalFrequency = transaction?.groupId ? (transaction.installments ? 'installment' : 'recurring') : 'single';
-  const isRestructuring = isEditing && (transactionFrequency !== originalFrequency ||
+  const isRestructuring = isEditing && !preserveGroupStructure && (transactionFrequency !== originalFrequency ||
     (originalFrequency === 'installment' && Number(installmentCount) !== transaction?.installments?.total));
   useEffect(() => {
     if (isRestructuring) form.setValue('value', '');
@@ -120,7 +122,8 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
     }
   }, [transactionType, form, isEditing, isCard]);
 
-  async function onSubmit(data: FormValues) {
+  async function onSubmit(values: FormValues) {
+    const data = preserveScopedRecurrence(values, transaction);
     if (!user) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Usuário não autenticado.' });
       return;
@@ -209,8 +212,13 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                 <FormLabel className="text-sm font-semibold">Aplicar alterações em:</FormLabel>
                 <FormControl>
                     <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    onValueChange={(scope: FormValues['updateScope']) => {
+                      const values = preserveScopedRecurrence({ ...form.getValues(), updateScope: scope }, transaction);
+                      field.onChange(scope);
+                      form.setValue('frequency', values.frequency);
+                      form.setValue('installments', values.installments);
+                    }}
+                    value={field.value}
                     className="flex flex-col space-y-1"
                     >
                     <FormItem className="flex items-center space-x-3 space-y-0">
@@ -218,7 +226,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                         <RadioGroupItem value="current" />
                         </FormControl>
                         <FormLabel className="font-normal text-sm">
-                        Somente esta transação
+                        Somente este mês (esta transação)
                         </FormLabel>
                     </FormItem>
                     <FormItem className="flex items-center space-x-3 space-y-0">
@@ -239,6 +247,13 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                     </FormItem>
                     </RadioGroup>
                 </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  {updateScope === 'current'
+                    ? 'O valor e os demais dados serão alterados apenas neste lançamento. Os meses anteriores e futuros serão preservados.'
+                    : updateScope === 'future'
+                      ? 'As alterações serão aplicadas a este lançamento e aos próximos, preservando os anteriores.'
+                      : 'As alterações serão aplicadas a todos os lançamentos do grupo.'}
+                </p>
                 <FormMessage />
                 </FormItem>
             )}
@@ -396,7 +411,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                           "w-full pl-3 text-left font-normal",
                           !field.value && "text-muted-foreground"
                         )}
-                         disabled={isEditing && !!transaction?.groupId && form.getValues('updateScope') !== 'current'}
+                         disabled={isEditing && !!transaction?.groupId && updateScope !== 'current'}
                       >
                         {field.value ? (
                           format(field.value, "PPP", { locale: ptBR })
@@ -459,10 +474,17 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
           render={({ field }) => (
             <FormItem className="space-y-3">
               <FormLabel>Frequência</FormLabel>
+              {preserveGroupStructure && (
+                <p className="text-xs text-muted-foreground">
+                  A frequência do grupo será mantida. Para ajustar o valor deste mês, edite o campo Valor.
+                  Para mudar a frequência ou o número de parcelas, selecione todas as transações.
+                </p>
+              )}
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
+                  disabled={preserveGroupStructure}
                   className="flex space-x-4"
                 >
                   <FormItem className="flex items-center space-x-2 space-y-0">
@@ -497,7 +519,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
               <FormItem>
                 <FormLabel>Número de Parcelas</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Ex: 12" {...field} />
+                  <Input type="number" placeholder="Ex: 12" {...field} disabled={preserveGroupStructure} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
