@@ -1,4 +1,4 @@
-'use client';
-import { PageHeader } from '@/components/PageHeader';
-import { PlanSimulation } from '@/components/plans/PlanSimulation';
-export default function PlansPage() { return <div className="space-y-6"><PageHeader title="Planos e recursos" /><PlanSimulation /></div>; }
+import { redirect } from 'next/navigation';
+
+// Preserve bookmarks to the retired plan selector. All features are available.
+export default function PlansPage() { redirect('/'); }

@@ -15,7 +15,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import {
-  CreditCard, Bell, Crown, Import,
+  CreditCard, Bell,  Import,
   DollarSign,
   Landmark,
   LayoutDashboard,
@@ -41,7 +41,6 @@ import type { User as UserProfile } from '@/lib/definitions';
 import { doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useData } from '@/context/DataContext';
-import { PlanBadge } from '@/components/plans/PlanSimulation';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 
 
@@ -52,7 +51,6 @@ const navItems = [
   { href: '/cards', label: 'Faturas', icon: CreditCard },
   { href: '/reminders', label: 'Lembretes', icon: Bell },
   { href: '/connections', label: 'Importação bancária', icon: Import },
-  { href: '/plans', label: 'Planos', icon: Crown },
   { href: '/categories', label: 'Categorias', icon: Tags },
   { href: '/budgets', label: 'Orçamentos', icon: FileBarChart },
   { href: '/goals', label: 'Metas', icon: Target },
@@ -172,7 +170,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
-        <PlanBadge />
         <SidebarMenu>
              <SidebarMenuItem>
                 <Link href="/settings">

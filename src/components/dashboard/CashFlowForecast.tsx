@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { usePlan } from '@/context/PlanContext';
 import { useMemo } from 'react';
 import {
   Area,
@@ -59,8 +57,7 @@ export function CashFlowForecast({
   transactions: Transaction[];
 }) {
   const { isBalanceVisible } = useData();
-  const { allows } = usePlan();
-  const horizon = allows('forecast90') ? 90 : 7;
+  const horizon = 90;
   const forecast = useMemo(
     () => buildCashFlowForecast(accounts, transactions, new Date(), horizon),
     [accounts, transactions, horizon],
@@ -107,7 +104,6 @@ export function CashFlowForecast({
           </div>
         </div>
 
-        {horizon === 7 && <p className="text-sm"><Link href="/plans" className="underline">Simule Premium ou Vitalício para projetar 90 dias.</Link></p>}
         {forecast.points.length > 0 ? (
           <div className="h-[260px] w-full" role="img" aria-label={`Gráfico diário do saldo de caixa para os próximos ${horizon} dias`}>
             <ResponsiveContainer width="100%" height="100%">

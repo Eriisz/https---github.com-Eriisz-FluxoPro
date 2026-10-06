@@ -37,7 +37,7 @@ const { buildTransactions, transactionFormSchema, transactionChanges, preserveSc
 const { prepareCardTransaction, invoiceKey, accountBalance, buildCardInvoices } = load('cards');
 const { settleInvoice, reopenInvoice } = load('invoice-writes');
 const { saveBudget } = load('budget-writes');
-const { replaceTransactions, deleteTransactions, updateTransactions } = load('transaction-writes');
+const { replaceTransactions, deleteTransactions, updateTransactions, setTransactionStatus } = load('transaction-writes');
 const { contributeToGoal } = load('goal-writes');
 const { assertReferenceUnused, deleteUnusedReference } = load('reference-writes');
 const { BACKUP_COLLECTIONS, parseBackup, backupRestorePlan } = load('backup');
@@ -361,6 +361,45 @@ try {
   await extendedRestore.commit();
   assert.deepEqual(canonical(await exportData()), canonical(extendedBackup));
   pass('Backup restaura ciclos, pagamentos de fatura e limites por categoria');
+
+  // Quick status writes preserve other fields and every other recurrence.
+  const salarySeries = buildTransactions({ ...incomeInput, frequency: 'recurring', value: '2500', status: 'PENDING' }, uid, nextId);
+  await replaceTransactions(owner.db, uid, salarySeries);
+  const selectedSalary = salarySeries[1];
+  await firestore.updateDoc(ref('transactions', selectedSalary.id), { value: 2200 });
+  await Promise.all([
+    setTransactionStatus(owner.db, uid, selectedSalary, 'RECEIVED'),
+    setTransactionStatus(second.db, uid, selectedSalary, 'RECEIVED'),
+  ]);
+  let quickRow = (await firestore.getDoc(ref('transactions', selectedSalary.id))).data();
+  assert.deepEqual(quickRow, { ...selectedSalary, value: 2200, status: 'RECEIVED' });
+  for (const row of salarySeries.filter(row => row.id !== selectedSalary.id)) {
+    assert.deepEqual((await firestore.getDoc(ref('transactions', row.id))).data(), row);
+  }
+  await assert.rejects(setTransactionStatus(owner.db, uid, selectedSalary, 'PENDING'), /status mudou/);
+  await setTransactionStatus(owner.db, uid, quickRow, 'PENDING');
+  assert.equal((await firestore.getDoc(ref('transactions', selectedSalary.id))).data().status, 'PENDING');
+  pass('Status rápido: receita recebida/reaberta, concorrência idempotente e meses preservados');
+
+  const lateExpense = { ...salarySeries[0], id: nextId(), groupId: 'quick-expenses', categoryId: 'purchase', type: 'expense', value: -50, status: 'LATE', date: '2020-01-01T12:00:00.000Z' };
+  await replaceTransactions(owner.db, uid, [lateExpense]);
+  await setTransactionStatus(owner.db, uid, lateExpense, 'PAID');
+  quickRow = (await firestore.getDoc(ref('transactions', lateExpense.id))).data();
+  assert.deepEqual(quickRow, { ...lateExpense, status: 'PAID' });
+  await setTransactionStatus(owner.db, uid, quickRow, 'PENDING');
+  quickRow = (await firestore.getDoc(ref('transactions', lateExpense.id))).data();
+  assert.equal(editableStatus(quickRow), 'LATE');
+  await assert.rejects(setTransactionStatus(other.db, uid, quickRow, 'PAID'), denied);
+  await assert.rejects(setTransactionStatus(owner.db, uid, { ...quickRow, id: 'missing' }, 'PAID'), /não encontrado/);
+  const currentPurchase = (await firestore.getDoc(ref('transactions', purchase.id))).data();
+  await assert.rejects(setTransactionStatus(owner.db, uid, currentPurchase, 'PENDING'), /Faturas/);
+  const pendingCard = { ...purchase, id: nextId(), status: 'PENDING' };
+  await replaceTransactions(owner.db, uid, [pendingCard]);
+  await assert.rejects(setTransactionStatus(owner.db, uid, pendingCard, 'PAID'), /Faturas/);
+  assert.deepEqual((await firestore.getDoc(ref('transactions', currentPurchase.id))).data(), currentPurchase);
+  assert.deepEqual((await firestore.getDoc(ref('transactions', pendingCard.id))).data(), pendingCard);
+  pass('Status rápido: despesa atrasada paga/reaberta, permissões e faturas protegidas');
+
 
 } catch (error) {
   testError = error;

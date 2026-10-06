@@ -2,9 +2,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { useData } from '@/context/DataContext';
-import { usePlan } from '@/context/PlanContext';
 import { saveBudget } from '@/lib/budget-writes';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,7 +48,6 @@ export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
   const { toast } = useToast();
   const isEditing = !!existingBudget;
   const { categories } = useData();
-  const { allows } = usePlan();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,9 +64,6 @@ export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
       return;
     }
 
-    if (data.categoryId && !allows('categoryBudgets')) {
-      toast({ title: 'Recurso Premium', description: 'Simule Premium ou Vitalício em Planos para definir limites por categoria.' }); return;
-    }
     if (!await confirmWrite(saveBudget(firestore, user.uid, { month: data.month, categoryId: data.categoryId || null, limit: parseMoney(data.limit)! }, existingBudget?.id), toast)) return;
     await revalidateDashboard().catch(() => undefined);
     
@@ -98,8 +92,7 @@ export function BudgetForm({ existingBudget, onFormSubmit }: BudgetFormProps) {
                 </FormItem>
             )}
         />
-        <FormField control={form.control} name="categoryId" render={({ field }) => <FormItem><FormLabel>Aplicar limite a</FormLabel><FormControl><select {...field} disabled={isEditing || !allows('categoryBudgets')} className="h-10 w-full rounded-md border bg-background px-3"><option value="">Todas as despesas do mês</option>{(categories || []).filter(category => category.type === 'expense').map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></FormControl><FormMessage /></FormItem>} />
-        {!allows('categoryBudgets') && <p className="text-xs text-muted-foreground"><Link href="/plans" className="underline">Simule Premium</Link> para definir um limite por categoria.</p>}
+        <FormField control={form.control} name="categoryId" render={({ field }) => <FormItem><FormLabel>Aplicar limite a</FormLabel><FormControl><select {...field} disabled={isEditing} className="h-10 w-full rounded-md border bg-background px-3"><option value="">Todas as despesas do mês</option>{(categories || []).filter(category => category.type === 'expense').map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></FormControl><FormMessage /></FormItem>} />
         <FormField
           control={form.control}
           name="limit"

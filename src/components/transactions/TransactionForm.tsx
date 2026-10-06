@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { transactionFormSchema, buildTransactions, editableStatus, preserveScopedRecurrence, type TransactionFormValues } from '@/lib/transactions';
+import { transactionFormSchema, buildTransactions, editableStatus, transactionStatus, preserveScopedRecurrence, type TransactionFormValues } from '@/lib/transactions';
 import { prepareCardTransaction } from '@/lib/cards';
 import { replaceTransactions, updateTransactions } from '@/lib/transaction-writes';
 import { CalendarIcon, Calculator as CalculatorIcon, PlusCircle } from 'lucide-react';
@@ -268,6 +268,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                 <RadioGroup
                   onValueChange={(value) => {
                     field.onChange(value);
+                    form.setValue('status', transactionStatus(value as Transaction['type'], form.getValues('status')));
                     form.setValue('categoryId', ''); // Reset category on type change
                   }}
                   defaultValue={field.value}
@@ -449,6 +450,7 @@ export function TransactionForm({ accounts: initialAccounts, categories: initial
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="LATE">Atrasado</SelectItem>
                       {transactionType === 'income' ? (
                         <>
                           <SelectItem value="RECEIVED">Recebido</SelectItem>

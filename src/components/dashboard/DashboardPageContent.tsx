@@ -14,7 +14,6 @@ import { SummaryReport } from '@/components/dashboard/SummaryReport';
 import { MonthYearPicker } from '@/components/shared/MonthYearPicker';
 import { InsightsBanner } from '@/components/dashboard/InsightsBanner';
 import { CashFlowForecast } from '@/components/dashboard/CashFlowForecast';
-import { PremiumGate } from '@/components/plans/PlanSimulation';
 import { ReminderCenter } from '@/components/reminders/ReminderCenter';
 import { transactionCycle } from '@/lib/cards';
 import type { Transaction } from '@/lib/definitions';
@@ -218,13 +217,13 @@ export function DashboardPageContent() {
 
       <CashFlowForecast accounts={accounts || []} transactions={allTransactions || []} />
 
-      <PremiumGate feature="reports"><SummaryReport
+      <SummaryReport
         monthlyData={selectedMonthTransactions}
         yearlyData={selectedYearTransactions}
         categories={categories || []}
         periodDate={currentDate}
       />
-      </PremiumGate>
+
       <RecentTransactions transactions={recentTransactions} isDemo={isDemo} />
     </div>
   );

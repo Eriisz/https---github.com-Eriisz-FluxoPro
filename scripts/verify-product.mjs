@@ -6,7 +6,6 @@ const { buildCashFlowForecast } = load('finance-forecast');
 const { budgetProgress } = load('budgets');
 const { buildReminders, parseReminderSettings, defaultReminderSettings } = load('reminders');
 const { parseBackup, BACKUP_COLLECTIONS } = load('backup');
-const { hasFeature, featureNames, isPlan } = load('plans');
 const { belongsToMonth } = load('finance-engine');
 const { buildTransactions } = load('transactions');
 const date = (year, month, day) => new Date(year, month - 1, day, 12);
@@ -71,12 +70,6 @@ assert.throws(() => parseBackup({ ...backup, accounts: [card] }));
 assert.throws(() => parseBackup({ ...backup, transactions: [{ ...paid, paidAt: undefined }] }));
 assert.throws(() => parseBackup({ ...backup, transactions: [{ ...paid, invoiceDueDate: '2026-02-30' }] }));
 assert.throws(() => parseBackup({ ...backup, budgets: [{ ...budget, categoryId: 'missing' }] }));
-for (const feature of Object.keys(featureNames)) {
-  assert.equal(hasFeature('free', feature), false);
-  assert.equal(hasFeature('premium', feature), true);
-  assert.equal(hasFeature('lifetime', feature), true);
-}
-assert.equal(isPlan('admin'), false);
 const oldTimezone = process.env.TZ;
 for (const timezone of ['UTC', 'America/Sao_Paulo', 'Pacific/Kiritimati']) {
   process.env.TZ = timezone;
@@ -88,4 +81,4 @@ for (const timezone of ['UTC', 'America/Sao_Paulo', 'Pacific/Kiritimati']) {
   assert.equal(new Set(march.points.map(point => dayKey(point.date))).size, 16);
 }
 if (oldTimezone === undefined) delete process.env.TZ; else process.env.TZ = oldTimezone;
-console.log('Product regressions passed: invoice cycles, leap/month ends, installment cents, settlement cash, daily shortfall, budgets, reminders, backup, plans and timezones.');
+console.log('Product regressions passed: invoice cycles, leap/month ends, installment cents, settlement cash, daily shortfall, budgets, reminders, backup and timezones.');

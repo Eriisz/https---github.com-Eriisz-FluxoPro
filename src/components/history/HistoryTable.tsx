@@ -36,7 +36,7 @@ import { deleteTransactions } from '@/lib/transaction-writes';
 import { confirmWrite } from '@/lib/write-feedback';
 import { Badge } from '../ui/badge';
 import { formatCurrency } from '@/lib/utils';
-import { editableStatus } from '@/lib/transactions';
+import { TransactionStatusControl } from '@/components/transactions/TransactionStatusControl';
 import { revalidateDashboard } from '@/lib/actions';
 import { useData } from '@/context/DataContext';
 import { Label } from '@/components/ui/label';
@@ -74,29 +74,6 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
     setTransactionToDelete(null);
   };
 
-  const getTransactionStatus = editableStatus;
-
-  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' => {
-    switch(status) {
-        case 'PAID':
-        case 'RECEIVED':
-            return 'default';
-        case 'LATE':
-            return 'destructive';
-        case 'PENDING':
-        default:
-            return 'secondary';
-    }
-  }
-  
-  const statusLabels: {[key: string]: string} = {
-    PAID: 'Pago',
-    PENDING: 'Pendente',
-    RECEIVED: 'Recebido',
-    LATE: 'Atrasado',
-  };
-
-
   return (
     <>
         <Table>
@@ -106,14 +83,13 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
                 <TableHead className="hidden sm:table-cell">Categoria</TableHead>
                 <TableHead className="hidden md:table-cell">Conta</TableHead>
                 <TableHead className="hidden sm:table-cell">Data</TableHead>
-                <TableHead className="hidden md:table-cell">Status</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {transactions.length > 0 ? transactions.map((transaction) => {
-                const status = getTransactionStatus(transaction);
                 return (
                     <TableRow key={transaction.id}>
                     <TableCell>
@@ -147,9 +123,7 @@ export function HistoryTable({ transactions, onEdit, total }: HistoryTableProps)
                     <TableCell className="hidden sm:table-cell">
                         {new Date(transaction.date).toLocaleDateString("pt-BR", {timeZone: 'UTC'})}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                        <Badge variant={getStatusVariant(status)}>{statusLabels[status]}</Badge>
-                    </TableCell>
+                    <TableCell><TransactionStatusControl transaction={transaction} /></TableCell>
                     <TableCell
                         className={`text-right font-medium ${
                         transaction.type === "income"

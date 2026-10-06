@@ -1,23 +1,19 @@
-# Planos e novos recursos financeiros
+# Recursos financeiros
 
-## Simulação de planos
+Todas as funcionalidades estão disponíveis sem seleção de plano: orçamentos por
+categoria, lembretes configuráveis, previsão de 90 dias, importação CSV e relatórios/PDF.
+As antigas seleções salvas no navegador não afetam o acesso. O endereço `/plans`
+redireciona ao painel. Dados financeiros e preferências de lembretes são preservados.
 
-Abra **Planos** (ou `/demo`, sem login) e escolha **Simular Free**, **Simular Premium** ou **Simular Vitalício**. A seleção muda o acesso às funções nesta interface e fica salva por usuário neste navegador. Trocar de plano preserva os dados.
+## Alteração rápida de status
 
-| Recurso | Free | Premium | Vitalício |
-| --- | --- | --- | --- |
-| Contas, categorias, transações manuais e parcelas | Sim | Sim | Sim |
-| Faturas: fechamento, vencimento, pagamento e reversão | Sim | Sim | Sim |
-| Metas e orçamento total por mês | Sim | Sim | Sim |
-| Backup e restauração | Sim | Sim | Sim |
-| Lembretes no site | 3 dias e limite de 80% | Configuráveis | Configuráveis |
-| Previsão diária de saldo | 7 dias | 90 dias | 90 dias |
-| Orçamento por categoria | Consulta de dados existentes | Criar e editar | Criar e editar |
-| Importação e conciliação CSV | Não | Sim | Sim |
-| Relatórios e exportação PDF | Não | Sim | Sim |
-| Cobrança proposta | Gratuito | Recorrente | Única, sem renovação |
+No histórico e no painel, clique no status e escolha **Marcar como pago**,
+**Marcar como recebido** ou **Marcar como pendente**. Apenas o lançamento selecionado
+é alterado, mesmo em grupos recorrentes ou parcelados. Pendências vencidas aparecem
+como **Atrasado**; o formulário de edição também exibe esse estado.
 
-Não há checkout, cobrança, preço definido ou assinatura real. Premium e Vitalício têm os mesmos recursos nesta proposta. A seleção no navegador **não comprova pagamento** e os bloqueios atuais são uma simulação de produto. Para comercializar, implementar checkout, confirmação por webhook, direitos de acesso no servidor/regras, cancelamento e termos do plano vitalício. Nunca usar o valor do localStorage como autorização de cobrança ou de acesso pago real.
+Compras de cartão oferecem **Gerenciar pagamento da fatura**, para registrar ou
+desfazer o pagamento com a conta de origem e evitar diferenças no saldo.
 
 ## Faturas e saldos
 
@@ -38,15 +34,15 @@ O orçamento total do mês permanece separado dos limites por categoria: não s�
 
 Existe um limite por mês/escopo. Mês e categoria de um orçamento existente são fixos; o valor pode ser alterado. A criação usa um identificador determinístico e verifica concorrência. Categorias vinculadas a orçamentos e contas usadas em pagamentos ficam protegidas contra exclusão pela interface.
 
-Os lembretes aparecem no painel e em **Lembretes**. Incluem contas vencidas, valores a receber, faturas agrupadas e limites atingidos. No Premium/Vitalício, configure antecedência de 0 a 30 dias, percentual do orçamento e inclusão de receitas. É possível ocultar um aviso até o fim do dia. Preferências são locais e separadas por usuário.
+Os lembretes aparecem no painel e em **Lembretes**. Incluem contas vencidas, valores a receber, faturas agrupadas e limites atingidos. Configure antecedência de 0 a 30 dias, percentual do orçamento e inclusão de receitas. É possível ocultar um aviso até o fim do dia. Preferências são locais e separadas por usuário.
 
-A atualização ocorre enquanto o site está aberto; não há envio por e-mail, WhatsApp nem notificações em segundo plano. Ao simular Free, os parâmetros básicos são aplicados sem apagar as preferências Premium.
+A atualização ocorre enquanto o site está aberto; não há envio por e-mail, WhatsApp nem notificações em segundo plano.
 
 ## Previsão diária e importação bancária
 
 A previsão usa centavos inteiros e dias de calendário. Considera saldos iniciais de contas, pagamentos já registrados, recebimentos e pendências; compras do cartão entram na data de vencimento da fatura. Atrasos são projetados para hoje. O menor saldo e sua data ajudam a identificar falta de caixa entre dias. A previsão agrega cada dia, sem garantir disponibilidade dentro de um mesmo dia.
 
-Em **Importação bancária**, o CSV permite revisar e selecionar lançamentos e possíveis duplicatas. Importações para cartão são compras pendentes, com ciclo calculado; receitas em cartão são rejeitadas. A conexão bancária automática está explicitamente indisponível: falta selecionar/contratar e configurar um provedor. Não é uma função vendida nesta simulação.
+Em **Importação bancária**, o CSV permite revisar e selecionar lançamentos e possíveis duplicatas. Importações para cartão são compras pendentes, com ciclo calculado; receitas em cartão são rejeitadas. A conexão bancária automática está explicitamente indisponível: falta selecionar/contratar e configurar um provedor.
 
 ## Compatibilidade e testes
 
@@ -63,4 +59,4 @@ npm run typecheck
 npm run build
 ```
 
-Execute build e typecheck sequencialmente. O comando Firebase requer o ambiente descrito no README. Os testes de produto cobrem datas, parcelas, caixa, limites, lembretes, planos e backup; os testes Firebase cobrem pagamentos/reversões, concorrência, permissões e restauração com SDK real nos emuladores.
+Execute build e typecheck sequencialmente. O comando Firebase requer o ambiente descrito no README. Os testes de produto cobrem datas, parcelas, caixa, limites, lembretes e backup; os testes Firebase cobrem pagamentos/reversões, concorrência, permissões e restauração com SDK real nos emuladores.
