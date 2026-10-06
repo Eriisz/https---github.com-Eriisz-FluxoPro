@@ -24,6 +24,16 @@ export const transactionFormSchema = z.object({
 });
 export type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
+/** Editing occurrences keeps the series structure; only an explicit whole-group edit can rebuild it. */
+export function preserveScopedRecurrence(data: TransactionFormValues, original?: Transaction): TransactionFormValues {
+  if (!original?.groupId || data.updateScope === 'all') return data;
+  return {
+    ...data,
+    frequency: original.installments ? 'installment' : 'recurring',
+    installments: String(original.installments?.total ?? 24),
+  };
+}
+
 export function transactionStatus(type: Transaction['type'], status: Transaction['status']): Transaction['status'] {
   return status === 'PAID' || status === 'RECEIVED' ? (type === 'income' ? 'RECEIVED' : 'PAID') : status;
 }

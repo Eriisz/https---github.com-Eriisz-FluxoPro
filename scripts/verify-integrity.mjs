@@ -8,7 +8,7 @@ assert.deepEqual(splitInstallments(100, 3), [33.34,33.33,33.33]);
 for (let count=1; count<=120; count++) assert.equal(splitInstallments(1234.56,count).reduce((sum,value)=>sum+Math.round(value*100),0),123456);
 for (const args of [[1,0],[1,1.5],[1,121],[0.01,2],[NaN,2]]) assert.throws(()=>splitInstallments(...args));
 
-const { transactionFormSchema, buildTransactions, transactionChanges } = load('transactions');
+const { transactionFormSchema, buildTransactions, transactionChanges, preserveScopedRecurrence } = load('transactions');
 const input = {description:'Compra',value:'100',date:new Date('2027-01-31T12:00:00Z'),accountId:'account',categoryId:'expense',type:'expense',status:'PAID',frequency:'installment',installments:'3',updateScope:'all'};
 let id=0;
 const rows=buildTransactions(transactionFormSchema.parse(input),'user',()=>`id-${++id}`);
@@ -25,6 +25,22 @@ assert.equal(recurring.length,24);
 assert.equal(recurring[0].status,'RECEIVED');
 assert.equal(recurring[1].status,'PENDING');
 assert.equal(recurring[1].value,100);
+// Scoped salary edits must not turn a recurrence into a replacement of the whole series.
+for (const original of [recurring[1], rows[1]]) {
+  for (const updateScope of ['current', 'future']) {
+    const requested = { ...input, value: '2.200,00', frequency: 'single', installments: '1', updateScope };
+    const normalized = preserveScopedRecurrence(requested, original);
+    assert.equal(normalized.frequency, original.installments ? 'installment' : 'recurring');
+    assert.equal(normalized.installments, String(original.installments?.total ?? 24));
+    assert.equal(normalized.value, '2.200,00');
+    assert.equal(normalized.updateScope, updateScope);
+    assert.equal(requested.frequency, 'single', 'normalization must not mutate form state');
+    const wholeGroup = { ...requested, updateScope: 'all' };
+    assert.deepEqual(preserveScopedRecurrence(wholeGroup, original), wholeGroup);
+  }
+}
+assert.deepEqual(preserveScopedRecurrence(input), input);
+assert.deepEqual(preserveScopedRecurrence(input, { ...rows[0], groupId: undefined }), input);
 const edit={...input,value:'33,34',description:'Descrição corrigida'};
 assert.deepEqual(transactionChanges(edit,rows[0],rows[1]),{description:'Descrição corrigida'},'editing a description preserves different cents and open status');
 assert.deepEqual(transactionChanges({...edit,value:'40'},rows[0],rows[1]),{description:'Descrição corrigida',value:-40});

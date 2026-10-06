@@ -33,7 +33,7 @@ const firestore = require('firebase/firestore');
 firestore.setLogLevel('silent'); // Expected permission denials are asserted below.
 const cache = new Map();
 const load = name => loadTs(new URL(`../src/lib/${name}.ts`, import.meta.url), {}, cache);
-const { buildTransactions, transactionFormSchema, transactionChanges } = load('transactions');
+const { buildTransactions, transactionFormSchema, transactionChanges, preserveScopedRecurrence, editableStatus } = load('transactions');
 const { prepareCardTransaction, invoiceKey, accountBalance, buildCardInvoices } = load('cards');
 const { settleInvoice, reopenInvoice } = load('invoice-writes');
 const { saveBudget } = load('budget-writes');
@@ -169,6 +169,34 @@ try {
   assert.equal(income.description, 'Receita editada');
   assert.equal(income.status, 'RECEIVED');
   pass('Criação e edição de receita em formato brasileiro');
+
+  // Exercise the actual scoped SDK writer for recurring and legacy installment salaries.
+  const bankAccount = (await firestore.getDoc(ref('accounts', 'bank'))).data();
+  for (const frequency of ['recurring', 'installment']) {
+    const salaryInput = transactionFormSchema.parse({
+      ...incomeInput, description: 'Salário mensal', value: frequency === 'recurring' ? '2500' : '7500',
+      date: new Date('2026-09-05T12:00:00Z'), frequency, installments: '3',
+    });
+    const salaries = buildTransactions(salaryInput, uid, nextId);
+    for (const updateScope of ['current', 'future', 'all']) {
+      await replaceTransactions(owner.db, uid, salaries);
+      const selected = salaries[1];
+      const editValues = preserveScopedRecurrence({
+        ...salaryInput, date: new Date(selected.date), value: '2.200,00', updateScope,
+        // Reproduce choosing Única while trying to change just one month.
+        frequency: updateScope === 'all' ? frequency : 'single',
+        status: editableStatus(selected),
+      }, selected);
+      await updateTransactions(owner.db, uid, selected, editValues, [bankAccount]);
+      const actual = (await firestore.getDocs(collection('transactions'))).docs.map(doc => doc.data())
+        .filter(row => row.groupId === selected.groupId).sort((a, b) => a.date.localeCompare(b.date));
+      assert.deepEqual(actual, salaries.map((row, index) => ({
+        ...row, value: updateScope === 'all' || (updateScope === 'current' ? index === 1 : index >= 1) ? 2200 : row.value,
+      })), `${frequency}/${updateScope}: preserve other months, IDs, dates, status and group metadata`);
+    }
+    await deleteTransactions(owner.db, uid, salaries[0], true);
+  }
+  pass('Salário: edição isolada, futura e de todo o grupo preserva meses fora do escopo e metadados');
 
   const edit = firestore.writeBatch(owner.db);
   for (const item of stored) {
