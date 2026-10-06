@@ -9,6 +9,7 @@ const { outputText } = ts.transpileModule(source, {
 });
 const {
   belongsToMonth,
+  projectedMonthlyDifference,
   sumMonthlyExpenses,
   sumMonthlyPendingExpenses,
   sumMonthlyPendingIncome,
@@ -41,7 +42,13 @@ assert.equal(receivable - pending, 460, 'compare remaining receivables and payab
 assert.equal(sumMonthlyPendingIncome([]), 0);
 const allReceived = monthTransactions.map((t) => t.type === 'income' ? { ...t, status: 'RECEIVED' } : t);
 assert.equal(sumMonthlyPendingIncome(allReceived), 0, 'received income no longer counts as receivable');
-assert.equal(sumMonthlyPendingIncome(allReceived) - pending, -115, 'show a shortfall when nothing remains to receive');
+const projection = rows => projectedMonthlyDifference(sumSettledIncome(rows), sumMonthlyPendingIncome(rows), sumMonthlyExpenses(rows));
+assert.equal(projection(monthTransactions), 560, 'received200 + pending575 - all expenses215');
+assert.equal(projection(allReceived), 560, 'receiving income preserves projection instead of creating a false shortfall');
+assert.equal(projection([]), 0);
+assert.equal(projectedMonthlyDifference(0.1, 0.2, 0.3), 0, 'cent precision');
+assert.equal(projectedMonthlyDifference(20, 30, 75), -25, 'negative monthly result');
+assert.equal(projection(transactions.filter(t => belongsToMonth(t.date, new Date(2026, 3, 1)))), 0, 'other months stay separate');
 assert.equal(sumMonthlyPendingIncome(transactions.filter((t) => belongsToMonth(t.date, new Date(2026, 3, 1)))), 999, 'changing month selects its receivables');
 
 assert.equal(expenses, 215, 'include paid, pending, late and upcoming expenses');
@@ -57,6 +64,7 @@ assert.equal(belongsToMonth('invalid', selectedMonth), false);
 const allPaid = monthTransactions.map((t) => t.type === 'expense' ? { ...t, status: 'PAID' } : t);
 assert.equal(sumMonthlyExpenses(allPaid), expenses, 'paying an expense must not count it again');
 assert.equal(sumMonthlyPendingExpenses(allPaid), 0);
+assert.equal(projection(allPaid), projection(monthTransactions), 'paying expenses preserves the projected result');
 assert.equal(sumMonthlyExpenses([{ type: 'expense', status: 'PENDING', value: 40 }]), 40, 'accept positive expense magnitudes');
 assert.equal(sumMonthlyExpenses([]), 0);
 assert.equal(sumMonthlyPendingExpenses([]), 0);

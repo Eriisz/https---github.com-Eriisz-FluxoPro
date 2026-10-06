@@ -84,6 +84,11 @@ export function belongsToYear(isoDate: string, yearDate: Date): boolean {
   return date.getFullYear() === yearDate.getFullYear();
 }
 
+/** Monthly result includes settled/open income and every expense, independent of settlement status. */
+export function projectedMonthlyDifference(receivedIncome: number, pendingIncome: number, expenses: number): number {
+  return (Math.round(receivedIncome * 100) + Math.round(pendingIncome * 100) - Math.round(expenses * 100)) / 100;
+}
+
 export function sumMonthlyExpenses(transactions: Transaction[]): number {
   return transactions
     .filter((transaction) => transaction.type === 'expense')

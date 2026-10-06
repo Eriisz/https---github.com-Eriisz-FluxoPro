@@ -7,6 +7,7 @@ import { ArrowDownCircle, ArrowUpCircle, RefreshCw, Scale } from "lucide-react";
 import { Button } from '../ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useData } from '@/context/DataContext';
+import { projectedMonthlyDifference } from '@/lib/finance-engine';
 
 type OverviewCardsProps = {
     monthlyNet: number;
@@ -22,7 +23,7 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
   const [budgetView, setBudgetView] = useState<'receivable' | 'difference' | 'budget' | 'pending'>('receivable');
   const { isBalanceVisible } = useData();
   const remainingBudget = budget - spent;
-  const pendingDifference = pendingIncome - pendingExpenses;
+  const projectedDifference = projectedMonthlyDifference(income, pendingIncome, expenses);
   const viewTitles = {
     receivable: 'A receber (Mês)',
     difference: 'Diferença prevista',
@@ -112,22 +113,25 @@ export function OverviewCards({ monthlyNet, income, expenses, budget, spent, pen
             </>
           ) : budgetView === 'difference' ? (
             <>
-              <div className={`text-2xl font-bold ${isBalanceVisible && pendingDifference < 0 ? 'text-destructive' : 'text-primary'}`}>
-                {isBalanceVisible ? formatCurrency(pendingDifference) : hiddenValue}
+              <div className={`text-2xl font-bold ${isBalanceVisible && projectedDifference < 0 ? 'text-destructive' : 'text-primary'}`}>
+                {isBalanceVisible ? formatCurrency(projectedDifference) : hiddenValue}
               </div>
-              <p className="text-xs text-muted-foreground">A receber menos a pagar no mês</p>
+              <p className="text-xs text-muted-foreground">Recebido + a receber − despesas do mês</p>
               <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
+                <div className="flex justify-between gap-2">
+                  <dt>Recebido</dt><dd>{isBalanceVisible ? formatCurrency(income) : hiddenValue}</dd>
+                </div>
                 <div className="flex justify-between gap-2">
                   <dt>A receber</dt><dd>{isBalanceVisible ? formatCurrency(pendingIncome) : hiddenValue}</dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt>A pagar</dt><dd>{isBalanceVisible ? formatCurrency(pendingExpenses) : hiddenValue}</dd>
+                  <dt>Despesas do mês</dt><dd>{isBalanceVisible ? formatCurrency(expenses) : hiddenValue}</dd>
                 </div>
               </dl>
               <p className="mt-2 text-xs text-muted-foreground">
-                {!isBalanceVisible ? 'Comparação das pendências do mês' : pendingDifference < 0
-                  ? 'Falta para quitar as pendências'
-                  : pendingDifference > 0 ? 'Sobra prevista após quitar as pendências' : 'Valores a receber e a pagar equilibrados'}
+                {!isBalanceVisible ? 'Resultado previsto do mês' : projectedDifference < 0
+                  ? 'Receitas previstas insuficientes para as despesas do mês'
+                  : projectedDifference > 0 ? 'Sobra prevista após as despesas do mês' : 'Receitas e despesas do mês equilibradas'}
               </p>
               <Button variant="link" className="mt-1 h-auto p-0 text-xs" onClick={() => setBudgetView('receivable')}>
                 Ver valor a receber
