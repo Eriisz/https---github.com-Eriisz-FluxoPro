@@ -1,3 +1,4 @@
+import { TransactionStatusControl } from '@/components/transactions/TransactionStatusControl';
 
 import { useState, useMemo } from "react";
 import {
@@ -115,7 +116,8 @@ export function RecentTransactions({
                 <TableHead>Descrição</TableHead>
                 <TableHead className="hidden sm:table-cell">Categoria</TableHead>
                 <TableHead className="hidden md:table-cell">Data</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
+                <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                 {!isDemo && <TableHead className="w-[50px]"></TableHead>}
               </TableRow>
             </TableHeader>
@@ -151,6 +153,7 @@ export function RecentTransactions({
                   <TableCell className="hidden md:table-cell">
                      {new Date(transaction.date).toLocaleDateString("pt-BR", {timeZone: 'UTC'})}
                   </TableCell>
+                  <TableCell><TransactionStatusControl transaction={transaction} readOnly={isDemo} /></TableCell>
                   <TableCell
                     className={`text-right font-medium ${
                       transaction.type === "income"

@@ -42,12 +42,16 @@ npm run verify:goals
 npm run verify:integrity
 ```
 
-## Planos, faturas e planejamento
+## Faturas e planejamento
 
-Acesse **Planos** para simular Free, Premium e Vitalício, ou `/demo` para explorar
-com dados fictícios. Não há cobrança nesta simulação. A divisão dos recursos,
-o funcionamento das faturas e os requisitos para comercializar os planos estão
-em [Planos e recursos financeiros](docs/plans-and-financial-features.md).
+Todas as funcionalidades estão disponíveis diretamente, sem seleção de plano.
+Acesse `/demo` para explorar dados fictícios. Veja o funcionamento das faturas,
+lembretes, previsão de 90 dias e importação em
+[Recursos financeiros](docs/plans-and-financial-features.md).
+
+No histórico e no painel, clique no status para marcar uma receita como recebida,
+uma despesa como paga ou reabrir o lançamento como pendente. Compras de cartão
+são pagas ou reabertas pela fatura, com a conta de origem vinculada.
 
 Execute `npm run verify:product` para verificar ciclos de fatura, parcelas,
-previsão diária, limites por categoria, lembretes e a divisão dos planos.
+previsão diária, limites por categoria, lembretes e backup.

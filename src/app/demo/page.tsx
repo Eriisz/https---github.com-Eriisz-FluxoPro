@@ -1,6 +1,5 @@
 'use client';
 
-import { PlanSimulation } from '@/components/plans/PlanSimulation';
 import { CardInvoices } from '@/components/cards/CardInvoices';
 import Link from 'next/link';
 import { ArrowRight, CircleHelp, DollarSign, ShieldCheck } from 'lucide-react';
@@ -67,15 +66,14 @@ export default function DemoPage() {
             <CardContent className="flex gap-3 p-4">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">3</span>
               <div>
-                <p className="font-medium">Compare os planos</p>
-                <a href="#plan-simulation" className="text-sm text-muted-foreground underline underline-offset-4">Simulação Free, Premium e Vitalício</a>
+                <p className="font-medium">Explore as faturas</p>
+                <a href="#demo-invoices" className="text-sm text-muted-foreground underline underline-offset-4">Compras, limites e vencimentos</a>
               </div>
             </CardContent>
           </Card>
         </section>
-        <PlanSimulation />
         <DashboardPageContent />
-        <section aria-label="Exemplo de faturas"><h2 className="mb-4 text-2xl font-semibold">Faturas de demonstração</h2><CardInvoices /></section>
+        <section id="demo-invoices" aria-label="Exemplo de faturas"><h2 className="mb-4 text-2xl font-semibold">Faturas de demonstração</h2><CardInvoices /></section>
       </div>
     </DemoDataProvider>
   );

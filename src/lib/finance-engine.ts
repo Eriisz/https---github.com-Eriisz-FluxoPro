@@ -126,7 +126,6 @@ const PAGE_INDEX: Array<{ title: string; subtitle: string; href: string; keyword
   { title: 'Calculadoras', subtitle: 'Juros, empréstimo e inflação', href: '/calculators', keywords: ['calculadora', 'juros', 'inflacao'] },
   { title: 'Faturas', subtitle: 'Fechamento, vencimento e pagamento', href: '/cards', keywords: ['faturas', 'cartao', 'pagamento'] },
   { title: 'Lembretes', subtitle: 'Vencimentos e limites', href: '/reminders', keywords: ['lembretes', 'avisos', 'vencimento'] },
-  { title: 'Planos', subtitle: 'Simular Free, Premium e Vitalício', href: '/plans', keywords: ['planos', 'premium', 'vitalicio'] },
   { title: 'Importação bancária', subtitle: 'Conciliação de extratos CSV', href: '/connections', keywords: ['banco', 'importacao', 'csv'] },
   { title: 'Ajustes', subtitle: 'Perfil, tema e importação', href: '/settings', keywords: ['ajustes', 'configuracoes', 'perfil'] },
 ];

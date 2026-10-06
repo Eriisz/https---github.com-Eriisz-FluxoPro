@@ -1,6 +1,7 @@
+import { WriteValidationError } from './write-feedback';
 import { collection, doc, getDocs, query, where, runTransaction, type Firestore, type DocumentReference } from 'firebase/firestore';
 import type { Account, Transaction } from './definitions';
-import { transactionChanges, editableStatus, type TransactionFormValues } from './transactions';
+import { transactionChanges, editableStatus, transactionStatus, type TransactionFormValues } from './transactions';
 import { prepareCardTransaction } from './cards';
 
 async function originalRefs(db: Firestore, userId: string, original?: Transaction, group = true) {
@@ -58,5 +59,26 @@ export async function updateTransactions(db: Firestore, userId: string, original
     }
     if (!updates.length) throw new Error('Lançamento não encontrado. Atualize a página.');
     updates.forEach(item => tx.set(item.ref, item.data));
+  });
+}
+
+/** Change one occurrence only, without overwriting concurrent amount/date edits. */
+export async function setTransactionStatus(
+  db: Firestore, userId: string, original: Transaction, status: 'PENDING' | 'PAID' | 'RECEIVED',
+) {
+  const ref = doc(db, `users/${userId}/transactions`, original.id);
+  await runTransaction(db, async tx => {
+    const snapshot = await tx.get(ref);
+    if (!snapshot.exists()) throw new WriteValidationError('Lançamento não encontrado. Atualize a página.');
+    const row = snapshot.data() as Transaction;
+    const account = await tx.get(doc(db, `users/${userId}/accounts`, row.accountId));
+    if (!account.exists()) throw new WriteValidationError('Conta não encontrada. Atualize a página.');
+    if (row.paidFromAccountId || account.data().type === 'CartaoCredito') {
+      throw new WriteValidationError('Registre ou desfaça o pagamento pela tela de Faturas.');
+    }
+    const nextStatus = transactionStatus(row.type, status);
+    if (row.status === nextStatus) return; // Repeated selections are idempotent.
+    if (row.status !== original.status) throw new WriteValidationError('O status mudou em outra edição. Atualize a página e tente novamente.');
+    tx.update(ref, { status: nextStatus });
   });
 }
